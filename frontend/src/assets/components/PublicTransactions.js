@@ -28,6 +28,10 @@ import {
   Security
 } from '@mui/icons-material';
 import { useNavigate } from 'react-router-dom';
+import ChatIcon from '@mui/icons-material/Chat';
+import CloseIcon from '@mui/icons-material/Close';
+import { Fab, Dialog, DialogTitle, DialogContent, DialogActions, IconButton, TextField, List, ListItem, ListItemText } from '@mui/material';
+
 
 const PublicTransactions = () => {
   const [transactions, setTransactions] = useState([]);
@@ -281,8 +285,106 @@ const PublicTransactions = () => {
           </Typography>
         </Box>
       </Container>
+      <Chatbot />
     </Box>
   );
 };
+
+function Chatbot() {
+  const [open, setOpen] = React.useState(false);
+  const [messages, setMessages] = React.useState([
+    { sender: "bot", text: "Hi! Ask me anything about budget allocation or transactions." }
+  ]);
+  const [input, setInput] = React.useState("");
+  const [loading, setLoading] = React.useState(false);
+
+  const handleSend = async () => {
+    if (!input.trim()) return;
+    setMessages(msgs => [...msgs, { sender: "user", text: input }]);
+    setLoading(true);
+    try {
+      const res = await fetch("http://localhost:5000/api/chatbot", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ question: input })
+      });
+      const data = await res.json();
+      setMessages(msgs => [...msgs, { sender: "bot", text: data.answer || "Sorry, I couldn't find an answer." }]);
+    } catch (e) {
+      setMessages(msgs => [...msgs, { sender: "bot", text: "Error connecting to chatbot." }]);
+    }
+    setInput("");
+    setLoading(false);
+  };
+
+  return (
+    <>
+      <Fab
+        color="primary"
+        aria-label="chat"
+        onClick={() => setOpen(true)}
+        sx={{ position: "fixed", bottom: 32, right: 32, zIndex: 2000 }}
+      >
+        <ChatIcon />
+      </Fab>
+      <Dialog open={open} onClose={() => setOpen(false)} maxWidth="xs" fullWidth>
+        <DialogTitle>
+          Transparency Chatbot
+          <IconButton
+            aria-label="close"
+            onClick={() => setOpen(false)}
+            sx={{ position: 'absolute', right: 8, top: 8 }}
+          >
+            <CloseIcon />
+          </IconButton>
+        </DialogTitle>
+        <DialogContent dividers sx={{ minHeight: 250, maxHeight: 350, overflowY: "auto" }}>
+          <List>
+            {messages.map((msg, idx) => (
+              <ListItem key={idx} sx={{ justifyContent: msg.sender === "user" ? "flex-end" : "flex-start" }}>
+              <ListItemText
+                primary={
+                  <span style={{ whiteSpace: "pre-line" }}>
+                    {msg.text}
+                  </span>
+                }
+                sx={{
+                  bgcolor: msg.sender === "user" ? "#e3f2fd" : "#f1f8e9",
+                  borderRadius: 2,
+                  px: 2,
+                  py: 1,
+                  maxWidth: "80%",
+                  fontFamily: "inherit"
+                }}
+              />
+              </ListItem>
+            ))}
+            {loading && (
+              <ListItem>
+                <ListItemText primary="Thinking..." sx={{ fontStyle: "italic" }} />
+              </ListItem>
+            )}
+          </List>
+        </DialogContent>
+        <DialogActions>
+          <TextField
+            autoFocus
+            fullWidth
+            placeholder="Ask about budget or transactions..."
+            value={input}
+            onChange={e => setInput(e.target.value)}
+            onKeyDown={e => { if (e.key === "Enter") handleSend(); }}
+            disabled={loading}
+          />
+          <Button onClick={handleSend} disabled={loading || !input.trim()} variant="contained">
+            Send
+          </Button>
+        </DialogActions>
+      </Dialog>
+    </>
+  );
+}
+
+
 
 export default PublicTransactions;
