@@ -45,6 +45,7 @@ import ClearAllIcon from '@mui/icons-material/ClearAll';
 import LightMode from '@mui/icons-material/LightMode';
 import DarkMode from '@mui/icons-material/DarkMode';
 import { useNavigate } from 'react-router-dom';
+import HomeIcon from '@mui/icons-material/Home';
 import ColorModeContext from '../../contexts/ColorModeContext';
 import { useTheme } from '@mui/material/styles';
 import ContentCopy from '@mui/icons-material/ContentCopy';
@@ -278,6 +279,25 @@ const PublicTransactions = () => {
           <Typography variant="h6" component="div" sx={{ flexGrow: 1, fontWeight: 400, color: theme.palette.mode === 'dark' ? 'rgba(255,255,255,0.92)' : 'text.primary' }}>
             Transparency Ledger — Public View
           </Typography>
+          <Button
+            variant="outlined"
+            startIcon={<HomeIcon />}
+            onClick={() => navigate('/home')}
+            sx={{
+              textTransform: 'none',
+              borderColor: theme.palette.mode === 'dark' ? 'rgba(255,255,255,0.12)' : 'rgba(0,0,0,0.12)',
+              color: theme.palette.mode === 'dark' ? 'rgba(255,255,255,0.9)' : 'text.primary',
+              backgroundColor: theme.palette.mode === 'dark' ? 'rgba(255,255,255,0.02)' : 'transparent',
+              boxShadow: 'none',
+              mr: 1,
+              '&:hover': {
+                backgroundColor: theme.palette.mode === 'dark' ? 'rgba(255,255,255,0.03)' : 'rgba(0,0,0,0.03)',
+                borderColor: theme.palette.mode === 'dark' ? 'rgba(255,255,255,0.18)' : 'rgba(0,0,0,0.16)'
+              }
+            }}
+          >
+            Home
+          </Button>
           <Button
             variant="outlined"
             startIcon={<LoginIcon />}

@@ -38,7 +38,8 @@ import {
   AccountBalance,
   ExitToApp,
   Dashboard as DashboardIcon,
-  Visibility
+  Visibility,
+  Home as HomeIcon
 } from '@mui/icons-material';
 import { useAuth } from '../../contexts/LocalAuthContext';
 import { useNavigate } from 'react-router-dom';
@@ -372,6 +373,14 @@ const fetchDashboardData = async () => {
           <Typography variant="h6" component="div" sx={{ flexGrow: 1, fontWeight: 400, color: theme.palette.mode === 'dark' ? 'rgba(255,255,255,0.92)' : 'text.primary' }}>
             Admin Dashboard - Transparency Ledger
           </Typography>
+          <Button
+            variant="outlined"
+            startIcon={<HomeIcon />}
+            onClick={() => navigate('/home')}
+            sx={{ textTransform: 'none', mr: 2 }}
+          >
+            Home
+          </Button>
           <Button
             variant="outlined"
             startIcon={<Visibility />}

@@ -1,5 +1,6 @@
 import * as React from "react";
 import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
+import Home from './assets/components/Home';
 import { AuthProvider } from './contexts/LocalAuthContext';
 import SignIn from './assets/components/sign-in/SignIn';
 import AdminDashboard from './assets/components/AdminDashboard';
@@ -71,6 +72,8 @@ function App() {
                   </ProtectedRoute>
                 }
               />
+                {/* Home route */}
+                <Route path="/home" element={<Home />} />
               {/* Catch all - redirect to public view */}
               <Route path="*" element={<Navigate to="/" replace />} />
             </Routes>
