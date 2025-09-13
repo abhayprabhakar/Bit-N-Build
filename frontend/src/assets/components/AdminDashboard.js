@@ -45,6 +45,7 @@ import { useAuth } from '../../contexts/LocalAuthContext';
 import { useNavigate } from 'react-router-dom';
 import { useTheme } from '@mui/material/styles';
 import ColorModeContext from '../../contexts/ColorModeContext';
+import CurrencyContext from '../../contexts/CurrencyContext';
 import SearchIcon from '@mui/icons-material/Search';
 import ContentCopy from '@mui/icons-material/ContentCopy';
 import DarkMode from '@mui/icons-material/DarkMode';
@@ -54,10 +55,12 @@ import AccountCircleIcon from '@mui/icons-material/AccountCircle';
 import SwapHorizIcon from '@mui/icons-material/SwapHoriz';
 import FilterListIcon from '@mui/icons-material/FilterList';
 import ClearAllIcon from '@mui/icons-material/ClearAll';
+import Divider from '@mui/material/Divider';
 
 const AdminDashboard = () => {
   const theme = useTheme();
   const { toggleColorMode } = useContext(ColorModeContext);
+  const { currency, setCurrency } = useContext(CurrencyContext);
   const { currentUser, logout, makeAuthenticatedRequest, addDepartment } = useAuth();
   const [transactions, setTransactions] = useState([]);
   const [departments, setDepartments] = useState([]);
@@ -211,11 +214,33 @@ const fetchDashboardData = async () => {
     }
   };
 
-  const formatCurrency = (amount) => {
-    return new Intl.NumberFormat('en-US', {
-      style: 'currency',
-      currency: 'USD'
-    }).format(amount);
+  // FX placeholder rates (same convention: FX_RATES_TO_USD maps currency -> USD)
+  const FX_RATES_TO_USD = {
+    USD: 1,
+    GBP: 1.27,
+    INR: 0.012,
+  };
+
+  const convertToUSD = (amount, fromCurrency) => {
+    const rate = FX_RATES_TO_USD[fromCurrency] || 1;
+    return amount * rate;
+  };
+
+  const convertFromUSD = (amountUSD, toCurrency) => {
+    const rate = FX_RATES_TO_USD[toCurrency] || 1;
+    return amountUSD / rate;
+  };
+
+  const formatCurrency = (amountUSD) => {
+    const value = convertFromUSD(Number(amountUSD || 0), currency);
+    switch (currency) {
+      case 'GBP':
+        return new Intl.NumberFormat('en-GB', { style: 'currency', currency: 'GBP' }).format(value);
+      case 'INR':
+        return new Intl.NumberFormat('en-IN', { style: 'currency', currency: 'INR' }).format(value);
+      default:
+        return new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD' }).format(value);
+    }
   };
 
   const formatDate = (dateString) => {
@@ -251,9 +276,12 @@ const fetchDashboardData = async () => {
         const hay = `${t.purpose || ''} ${t.fromDept || ''} ${t.toDept || ''} ${t.transaction_hash || ''}`.toLowerCase();
         if (!hay.includes(q)) return false;
       }
+      // Amounts are stored canonically in USD; convert entered min/max from selected currency to USD before comparing
       const amount = Number(t.amount || 0);
-      if (filters.minAmount !== '' && !isNaN(Number(filters.minAmount)) && amount < Number(filters.minAmount)) return false;
-      if (filters.maxAmount !== '' && !isNaN(Number(filters.maxAmount)) && amount > Number(filters.maxAmount)) return false;
+      const minVal = filters.minAmount !== '' && !isNaN(Number(filters.minAmount)) ? convertToUSD(Number(filters.minAmount), currency) : null;
+      const maxVal = filters.maxAmount !== '' && !isNaN(Number(filters.maxAmount)) ? convertToUSD(Number(filters.maxAmount), currency) : null;
+      if (minVal !== null && amount < minVal) return false;
+      if (maxVal !== null && amount > maxVal) return false;
       if (filters.from && !(t.fromDept || '').toLowerCase().includes(filters.from.toLowerCase())) return false;
       if (filters.to && !(t.toDept || '').toLowerCase().includes(filters.to.toLowerCase())) return false;
       if (filters.status && (String(t.status || '').toLowerCase() !== String(filters.status || '').toLowerCase())) return false;
@@ -389,6 +417,14 @@ const fetchDashboardData = async () => {
           >
             Public View
           </Button>
+          <FormControl size="small" sx={{ minWidth: 120, mr: 2 }}>
+            <InputLabel>Currency</InputLabel>
+            <Select value={currency} label="Currency" onChange={(e) => setCurrency(e.target.value)}>
+              <MenuItem value="USD">USD</MenuItem>
+              <MenuItem value="GBP">GBP</MenuItem>
+              <MenuItem value="INR">INR</MenuItem>
+            </Select>
+          </FormControl>
           <Button
             variant="outlined"
             color="inherit"
@@ -768,6 +804,48 @@ const fetchDashboardData = async () => {
                 </Box>
               </Box>
             ) : null}
+            {detailTx?.status === 'Rejected' && detailTx?.rejection_reason && (
+              <>
+                <Divider sx={{ my: 1 }} />
+                <Typography variant="subtitle2">Rejection Reason</Typography>
+                <Typography paragraph color="error">{detailTx.rejection_reason}</Typography>
+              </>
+            )}
+
+            {detailTx && detailTx.status === 'Pending' && currentUser && (
+              // Only show if current user is the receiver (toDept)
+              (() => {
+                // Find the department where current user is head
+                const myDept = departments.find(
+                  d => d.head_user_id === currentUser.user_id
+                );
+                if (myDept && myDept.name === detailTx.toDept) {
+                  return (
+                    <Box mt={2}>
+                      <Button
+                        variant="contained"
+                        color="success"
+                        sx={{ mr: 2 }}
+                        onClick={async () => {
+                          // Approve API call
+                          const res = await makeAuthenticatedRequest(`/api/transactions/${detailTx.transaction_id}/approve`, 'POST');
+                          if (res.success) {
+                            setDetailOpen(false);
+                            fetchDashboardData();
+                          } else {
+                            alert(res.message || 'Failed to approve');
+                          }
+                        }}
+                      >
+                        Approve
+                      </Button>
+                      <RejectButton detailTx={detailTx} fetchDashboardData={fetchDashboardData} setDetailOpen={setDetailOpen} />
+                    </Box>
+                  );
+                }
+                return null;
+              })()
+            )}
           </DialogContent>
           <DialogActions>
             <Button onClick={() => setDetailOpen(false)}>Close</Button>
@@ -840,5 +918,60 @@ const fetchDashboardData = async () => {
     </Box>
   );
 };
+
+function RejectButton({ detailTx, fetchDashboardData, setDetailOpen }) {
+  const { makeAuthenticatedRequest } = useAuth();
+  const [open, setOpen] = useState(false);
+  const [reason, setReason] = useState('');
+  const [error, setError] = useState('');
+
+  const handleReject = async () => {
+    if (!reason.trim()) {
+      setError('Please provide a rejection reason.');
+      return;
+    }
+    const res = await makeAuthenticatedRequest(
+      `/api/transactions/${detailTx.transaction_id}/reject`,
+      'POST',
+      { reason }
+    );
+    if (res.success) {
+      setOpen(false);
+      setDetailOpen(false);
+      fetchDashboardData();
+    } else {
+      setError(res.message || 'Failed to reject');
+    }
+  };
+
+  return (
+    <>
+      <Button variant="outlined" color="error" onClick={() => setOpen(true)}>
+        Reject
+      </Button>
+      <Dialog open={open} onClose={() => setOpen(false)}>
+        <DialogTitle>Reject Transaction</DialogTitle>
+        <DialogContent>
+          <TextField
+            label="Rejection Reason"
+            fullWidth
+            multiline
+            minRows={2}
+            value={reason}
+            onChange={e => setReason(e.target.value)}
+            error={!!error}
+            helperText={error}
+          />
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={() => setOpen(false)}>Cancel</Button>
+          <Button color="error" variant="contained" onClick={handleReject}>
+            Reject
+          </Button>
+        </DialogActions>
+      </Dialog>
+    </>
+  );
+}
 
 export default AdminDashboard;

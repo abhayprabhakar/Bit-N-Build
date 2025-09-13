@@ -51,6 +51,7 @@ import { Fab, List, ListItem, ListItemText } from '@mui/material';
 
 import HomeIcon from '@mui/icons-material/Home';
 import ColorModeContext from '../../contexts/ColorModeContext';
+import CurrencyContext from '../../contexts/CurrencyContext';
 import { useTheme } from '@mui/material/styles';
 import ContentCopy from '@mui/icons-material/ContentCopy';
 import TextField from '@mui/material/TextField';
@@ -71,6 +72,7 @@ const PublicTransactions = () => {
   const [dialogOpen, setDialogOpen] = useState(false);
   const [filters, setFilters] = useState({ minAmount: '', maxAmount: '', from: '', to: '', status: '' });
   const [search, setSearch] = useState('');
+  const { currency, setCurrency } = useContext(CurrencyContext);
   const navigate = useNavigate();
 
   useEffect(() => {
@@ -111,12 +113,7 @@ const PublicTransactions = () => {
     }
   };
 
-  const formatCurrency = (amount) => {
-    return new Intl.NumberFormat('en-US', {
-      style: 'currency',
-      currency: 'USD'
-    }).format(amount);
-  };
+  // Note: FX helpers and formatCurrency are defined earlier in this file. Ensure there's only one definition to avoid redeclaration.
 
   const formatDate = (dateString) => {
     return new Date(dateString).toLocaleDateString('en-US', {
@@ -135,10 +132,12 @@ const PublicTransactions = () => {
         const hay = `${t.purpose || ''} ${t.fromDept || ''} ${t.toDept || ''} ${t.transaction_hash || ''}`.toLowerCase();
         if (!hay.includes(q)) return false;
       }
-      // amount filter
-      const amount = Number(t.amount || 0);
-      if (filters.minAmount !== '' && !isNaN(Number(filters.minAmount)) && amount < Number(filters.minAmount)) return false;
-      if (filters.maxAmount !== '' && !isNaN(Number(filters.maxAmount)) && amount > Number(filters.maxAmount)) return false;
+  // amount filter (filters are entered in selected currency; convert to USD for comparison)
+  const amountUSD = Number(t.amount || 0);
+  const minVal = filters.minAmount !== '' && !isNaN(Number(filters.minAmount)) ? convertToUSD(Number(filters.minAmount), currency) : null;
+  const maxVal = filters.maxAmount !== '' && !isNaN(Number(filters.maxAmount)) ? convertToUSD(Number(filters.maxAmount), currency) : null;
+  if (minVal !== null && amountUSD < minVal) return false;
+  if (maxVal !== null && amountUSD > maxVal) return false;
       // from/to filter (case-insensitive substring)
       if (filters.from && !(t.fromDept || '').toLowerCase().includes(filters.from.toLowerCase())) return false;
       if (filters.to && !(t.toDept || '').toLowerCase().includes(filters.to.toLowerCase())) return false;
@@ -209,6 +208,35 @@ const PublicTransactions = () => {
   };
 
   const recentVolumes = getLastNDaysVolumes(7);
+
+  // Currency conversion helpers (placeholder rates). In production these should come from a reliable FX API.
+  const FX_RATES_TO_USD = {
+    USD: 1,
+    GBP: 1.27, // 1 GBP = 1.27 USD (example)
+    INR: 0.012, // 1 INR = 0.012 USD (example)
+  };
+
+  const convertToUSD = (amount, fromCurrency) => {
+    const rate = FX_RATES_TO_USD[fromCurrency] || 1;
+    return amount * rate;
+  };
+
+  const convertFromUSD = (amountUSD, toCurrency) => {
+    const rate = FX_RATES_TO_USD[toCurrency] || 1;
+    return amountUSD / rate;
+  };
+
+  const formatCurrency = (amountUSD) => {
+    const value = convertFromUSD(Number(amountUSD || 0), currency);
+    switch (currency) {
+      case 'GBP':
+        return new Intl.NumberFormat('en-GB', { style: 'currency', currency: 'GBP' }).format(value);
+      case 'INR':
+        return new Intl.NumberFormat('en-IN', { style: 'currency', currency: 'INR' }).format(value);
+      default:
+        return new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD' }).format(value);
+    }
+  };
 
   const settledCount = filtered.filter(t => String(t.status || '').toLowerCase() === 'settled').length;
   const settledRatio = filtered.length > 0 ? settledCount / filtered.length : 0;
@@ -320,6 +348,14 @@ const PublicTransactions = () => {
           >
             Login
           </Button>
+          <FormControl size="small" sx={{ ml: 1, minWidth: 120 }}>
+            <InputLabel>Currency</InputLabel>
+            <Select value={currency} label="Currency" onChange={(e) => setCurrency(e.target.value)}>
+              <MenuItem value="USD">USD</MenuItem>
+              <MenuItem value="GBP">GBP</MenuItem>
+              <MenuItem value="INR">INR</MenuItem>
+            </Select>
+          </FormControl>
           <ThemeToggle />
         </Toolbar>
       </AppBar>
@@ -372,7 +408,7 @@ const PublicTransactions = () => {
                   )}
                 </Typography>
                 <Box mt={1} display="flex" alignItems="center" gap={2} justifyContent="center">
-                  <Sparkline data={recentVolumes.map(d => ({ value: Math.abs(d.value) }))} width={120} height={36} stroke={theme.palette.mode === 'dark' ? '#a7f3d0' : '#2e7d32'} />
+                  <Sparkline data={recentVolumes.map(d => ({ value: Math.abs(convertFromUSD(d.value, currency)) }))} width={120} height={36} stroke={theme.palette.mode === 'dark' ? '#a7f3d0' : '#2e7d32'} />
                   <Typography variant="caption" sx={{ color: theme.palette.mode === 'dark' ? 'rgba(255,255,255,0.7)' : 'text.secondary' }}>Last 7 days</Typography>
                 </Box>
               </CardContent>
@@ -448,6 +484,18 @@ const PublicTransactions = () => {
                   )
                 }}
               />
+              <FormControl size="small" sx={{ minWidth: 120 }}>
+                <InputLabel>Currency</InputLabel>
+                <Select
+                  label="Currency"
+                  value={currency}
+                  onChange={(e) => setCurrency(e.target.value)}
+                >
+                  <MenuItem value="USD">USD</MenuItem>
+                  <MenuItem value="GBP">GBP</MenuItem>
+                  <MenuItem value="INR">INR</MenuItem>
+                </Select>
+              </FormControl>
             </Stack>
             <Stack direction={{ xs: 'column', sm: 'row' }} spacing={2} alignItems="center">
               <TextField
@@ -698,6 +746,13 @@ const PublicTransactions = () => {
               </Box>
             </Box>
           ) : null}
+        {selectedTx?.status === 'Rejected' && selectedTx?.rejection_reason && (
+          <>
+            <Divider sx={{ my: 1 }} />
+            <Typography variant="subtitle2">Rejection Reason</Typography>
+            <Typography paragraph color="error">{selectedTx.rejection_reason}</Typography>
+          </>
+        )}
         </DialogContent>
         <DialogActions sx={{ bgcolor: 'transparent', borderTop: 'none' }}>
           <Button onClick={() => setDialogOpen(false)} sx={{ color: theme.palette.mode === 'dark' ? 'rgba(255,255,255,0.9)' : 'text.primary' }}>Close</Button>

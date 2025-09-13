@@ -6,6 +6,7 @@ import SignIn from './assets/components/sign-in/SignIn';
 import AdminDashboard from './assets/components/AdminDashboard';
 import PublicTransactions from './assets/components/PublicTransactions';
 import ProtectedRoute from './assets/components/ProtectedRoute';
+import CurrencyContext from './contexts/CurrencyContext';
 import { ThemeProvider, createTheme } from '@mui/material/styles';
 import CssBaseline from '@mui/material/CssBaseline';
 import useMediaQuery from '@mui/material/useMediaQuery';
@@ -51,37 +52,38 @@ function App() {
     toggleColorMode: () => setMode((prev) => (prev === 'light' ? 'dark' : 'light')),
   }), [setMode]);
   const theme = React.useMemo(() => getTheme(mode), [mode]);
+  const [currency, setCurrency] = React.useState('USD');
 
   return (
     <ColorModeContext.Provider value={colorMode}>
       <ThemeProvider theme={theme}>
         <CssBaseline />
         <AuthProvider>
-          <BrowserRouter>
-            <Routes>
-              {/* Public route - default view for all users */}
-              <Route path="/public" element={<PublicTransactions />} />
-              {/* Authentication routes */}
-              <Route path="/signin" element={<SignIn />} />
-              {/* Protected admin routes */}
-              <Route
-                path="/admin/dashboard"
-                element={
-                  <ProtectedRoute>
-                    <AdminDashboard />
-                  </ProtectedRoute>
-                }
-              />
+          <CurrencyContext.Provider value={{ currency, setCurrency }}>
+            <BrowserRouter>
+              <Routes>
+                {/* Public route - default view for all users */}
+                <Route path="/public" element={<PublicTransactions />} />
+                {/* Authentication routes */}
+                <Route path="/signin" element={<SignIn />} />
+                {/* Protected admin routes */}
+                <Route
+                  path="/admin/dashboard"
+                  element={
+                    <ProtectedRoute>
+                      <AdminDashboard />
+                    </ProtectedRoute>
+                  }
+                />
                 {/* Root: landing page */}
                 <Route path="/" element={<Home />} />
-                {/* Keep public ledger at /public */}
-                <Route path="/public" element={<PublicTransactions />} />
                 {/* Back-compat: /home -> / */}
                 <Route path="/home" element={<Navigate to="/" replace />} />
                 {/* Catch all - redirect to root landing */}
                 <Route path="*" element={<Navigate to="/" replace />} />
-            </Routes>
-          </BrowserRouter>
+              </Routes>
+            </BrowserRouter>
+          </CurrencyContext.Provider>
         </AuthProvider>
       </ThemeProvider>
     </ColorModeContext.Provider>

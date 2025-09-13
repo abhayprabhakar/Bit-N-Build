@@ -14,6 +14,11 @@ import MenuIcon from '@mui/icons-material/Menu';
 import CloseRoundedIcon from '@mui/icons-material/CloseRounded';
 import ColorModeIconDropdown from '../../shared-theme/ColorModeIconDropdown';
 import Sitemark from './SitemarkIcon';
+import { useContext } from 'react';
+import CurrencyContext from '../../../../contexts/CurrencyContext';
+import FormControl from '@mui/material/FormControl';
+import InputLabel from '@mui/material/InputLabel';
+import Select from '@mui/material/Select';
 
 const StyledToolbar = styled(Toolbar)(({ theme }) => ({
   display: 'flex',
@@ -34,6 +39,7 @@ const StyledToolbar = styled(Toolbar)(({ theme }) => ({
 export default function AppAppBar() {
   const [open, setOpen] = React.useState(false);
   const navigate = useNavigate();
+  // Currency not needed in AppAppBar per user request
 
   const toggleDrawer = (newOpen) => () => {
     setOpen(newOpen);
@@ -82,6 +88,7 @@ export default function AppAppBar() {
               alignItems: 'center',
             }}
           >
+            {/* Currency selector removed from AppAppBar per user request */}
             <Button color="primary" variant="text" size="small" onClick={() => navigate('/public')}>
               Public View
             </Button>
@@ -129,6 +136,7 @@ export default function AppAppBar() {
                     Public View
                   </Button>
                 </MenuItem>
+                {/* Currency selector removed from drawer per user request */}
                 <MenuItem>
                   <Button color="primary" variant="outlined" fullWidth onClick={() => { setOpen(false); navigate('/signin'); }}>
                     Login
