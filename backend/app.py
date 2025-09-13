@@ -9,6 +9,7 @@ from functools import wraps
 import logging
 import re
 import requests
+import os
 
 app = Flask(__name__)
 app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///transparency_ledger.db'  # Using SQLite for simplicity
@@ -513,6 +514,90 @@ def get_users():
         return jsonify(result), 200
     except Exception as e:
         return jsonify({"success": False, "message": str(e)}), 500
+    
+@app.route('/api/chatbot', methods=['POST'])
+def chatbot():
+    """
+    Gemini-powered chatbot for public Q&A about budget/transactions.
+    """
+    try:
+        data = request.get_json()
+        question = data.get("question", "")
+        if not question:
+            return jsonify({"answer": "Please ask a question."}), 400
+
+        # Fetch relevant data from the database (example: all departments and budgets)
+        departments = Department.query.all()
+        transactions = Transaction.query.order_by(Transaction.created_at.desc()).limit(20).all()
+        dept_info = [
+            f"{d.name}: Budget ${d.allocated_budget}" for d in departments
+        ]
+        tx_info = []
+        for t in transactions:
+            # Get fromDept and toDept logic (same as in your public transactions endpoint)
+            creator = User.query.get(t.created_by_id)
+            if creator and creator.role == UserRole.Admin:
+                from_dept = "Admin"
+            elif creator and creator.role == UserRole.DeptHead:
+                headed_dept = Department.query.filter_by(head_user_id=creator.user_id).first()
+                from_dept = headed_dept.name if headed_dept else creator.name
+            else:
+                from_dept = creator.name if creator else "Unknown"
+            to_dept = Department.query.get(t.dept_id).name if t.dept_id else "Unknown"
+            tx_info.append(
+                f"{t.created_at.date()} | From: {from_dept} | To: {to_dept} | Purpose: {t.purpose} | Amount: {t.amount} | Status: {t.status.value}"
+            )
+
+        # Compose context for Gemini
+        context = (
+            "Departments and Budgets:\n" +
+            "\n".join(dept_info) +
+            "\n\nRecent Transactions:\n" +
+            "\n".join(tx_info)
+        )
+
+        # Call Gemini API (replace with your actual Gemini endpoint and key)
+        GEMINI_API_KEY = os.getenv("GEMINI_API_KEY")
+        if not GEMINI_API_KEY:
+            return jsonify({"answer": "Gemini API key not set."}), 500
+        
+
+        gemini_payload = {
+            "contents": [
+                {"role": "user", "parts": [{
+                    "text": (
+                        "You are a helpful assistant for transparency and budget queries. "
+                        "Always answer in 2-4 sentences, be concise, and use bullet points if listing items. "
+                        "If the user asks for a summary or comparison, give only the most important facts. "
+                        "If the question is unclear, politely ask for clarification. "
+                        f"\n\nUser question: {question}\n\nContext:\n{context}"
+                    )
+                }]}
+            ]
+        }
+        gemini_headers = {
+            "Content-Type": "application/json"
+        }
+        gemini_url = f"https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key={GEMINI_API_KEY}"
+        r = requests.post(gemini_url, headers=gemini_headers, json=gemini_payload)
+        print("Gemini API status:", r.status_code)
+        print("Gemini API response:", r.text)
+        if r.status_code == 200:
+            answer = r.json().get("candidates", [{}])[0].get("content", {}).get("parts", [{}])[0].get("text", "Sorry, I couldn't find an answer.")
+            # Trim long answers
+            max_chars = 400
+            if len(answer) > max_chars:
+                trimmed = answer[:max_chars]
+                last_period = trimmed.rfind('.')
+                if last_period != -1:
+                    answer = trimmed[:last_period+1]
+                else:
+                    answer = trimmed + "..."
+        else:
+            answer = "Sorry, there was an error contacting Gemini."
+        return jsonify({"answer": answer})
+    except Exception as e:
+        return jsonify({"answer": f"Error: {str(e)}"}), 500
 
 if __name__ == '__main__':
     app.run(debug=True)
