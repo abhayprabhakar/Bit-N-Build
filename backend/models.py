@@ -72,5 +72,6 @@ class Transaction(db.Model):
     previous_hash = db.Column(db.String(64), nullable=True)
     current_hash = db.Column(db.String(64), unique=True, nullable=False)
     blockchain_hash = db.Column(db.String(66), nullable=True)  # Ethereum tx hash is 66 chars
+    rejection_reason = db.Column(db.Text, nullable=True)
     def __repr__(self):
         return f'<Transaction {self.transaction_id}: {self.purpose}>'
