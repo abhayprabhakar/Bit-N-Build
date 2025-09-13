@@ -72,19 +72,24 @@ const AdminDashboard = () => {
   const [detailOpen, setDetailOpen] = useState(false);
   const navigate = useNavigate();
   const [addDeptDialogOpen, setAddDeptDialogOpen] = useState(false);
-  const [deptForm, setDeptForm] = useState({ name: '', password: '', confirmPassword: '' });
+  const [deptForm, setDeptForm] = useState({ name: '', allocated_budget: '', password: '', confirmPassword: '' });
   const [deptError, setDeptError] = useState('');
   const [deptSuccess, setDeptSuccess] = useState('');
   const [search, setSearch] = useState('');
   const [copiedHash, setCopiedHash] = useState(null);
   const [filters, setFilters] = useState({ minAmount: '', maxAmount: '', from: '', to: '', status: '' });
-
+  const [balances, setBalances] = useState([]);
+  const [adminBalance, setAdminBalance] = useState(0);
+  const [adminBudget, setAdminBudget] = useState(0);
+  const [alerts, setAlerts] = useState([]);
   // Form state for new transaction
   const [newTransaction, setNewTransaction] = useState({
     amount: '',
     purpose: '',
     dept_id: ''
   });
+  const [editBudgetDialogOpen, setEditBudgetDialogOpen] = useState(false);
+  const [editBudgetDeptId, setEditBudgetDeptId] = useState(null);
 
   useEffect(() => {
     fetchDashboardData();
@@ -97,6 +102,13 @@ const fetchDashboardData = async () => {
       makeAuthenticatedRequest('/api/departments'),
       fetch('http://localhost:5000/api/public/transactions').then(res => res.json())
     ]);
+    const balancesRes = await makeAuthenticatedRequest('/api/departments/balances');
+    if (balancesRes && balancesRes.success) {
+      setBalances(balancesRes.departments || []);
+      setAdminBalance(balancesRes.admin?.balance || 0);
+      setAdminBudget(balancesRes.admin?.budget || 0);
+      setAlerts(balancesRes.alerts || []);
+    }
 
     // FIX: departments API returns an array, not {departments: [...]}
     setDepartments(Array.isArray(deptResponse) ? deptResponse : deptResponse.departments || []);
@@ -200,7 +212,12 @@ const fetchDashboardData = async () => {
       return;
     }
     try {
-      const res = await addDepartment(deptForm.name, deptForm.password, deptForm.confirmPassword);
+      const res = await addDepartment(
+        deptForm.name,
+        deptForm.password,
+        deptForm.confirmPassword,
+        deptForm.allocated_budget ? Number(deptForm.allocated_budget) : 0
+      );
       if (res.success) {
         setDeptSuccess(`Department created! Login: ${res.head_user_email}`);
         setDeptForm({ name: '', password: '', confirmPassword: '' });
@@ -285,6 +302,10 @@ const fetchDashboardData = async () => {
       if (filters.from && !(t.fromDept || '').toLowerCase().includes(filters.from.toLowerCase())) return false;
       if (filters.to && !(t.toDept || '').toLowerCase().includes(filters.to.toLowerCase())) return false;
       if (filters.status && (String(t.status || '').toLowerCase() !== String(filters.status || '').toLowerCase())) return false;
+      // Unified special filter
+      if (filters.special === "anomaly" && !t.anomaly) return false;
+      if (filters.special === "settled" && String(t.status).toLowerCase() !== "settled") return false;
+      if (filters.special === "rejected" && (String(t.status).toLowerCase() !== "rejected" || t.anomaly)) return false;
       return true;
     });
   };
@@ -470,6 +491,15 @@ const fetchDashboardData = async () => {
           />
           <TextField
             margin="dense"
+            label="Budget"
+            name="allocated_budget"
+            type="number"
+            fullWidth
+            value={deptForm.allocated_budget || ''}
+            onChange={handleDeptInputChange}
+          />
+          <TextField
+            margin="dense"
             label="Password"
             name="password"
             type="password"
@@ -506,6 +536,16 @@ const fetchDashboardData = async () => {
             {success}
           </Alert>
         )}
+        {alerts.length > 0 && (
+          <Alert severity="warning" sx={{ mb: 3 }}>
+            <Typography variant="subtitle2">Budget Overrun Alerts:</Typography>
+            <ul>
+              {alerts.map((a, i) => (
+                <li key={i}>{a.message}</li>
+              ))}
+            </ul>
+          </Alert>
+        )}
 
         {/* Statistics (styled like Public view) */}
         <Grid container spacing={3} mb={4} justifyContent="center">
@@ -526,6 +566,7 @@ const fetchDashboardData = async () => {
               </CardContent>
             </Card>
           </Grid>
+
           <Grid item xs={12} md={3}>
             <Card sx={{
               borderRadius: 3,
@@ -577,6 +618,49 @@ const fetchDashboardData = async () => {
               </CardContent>
             </Card>
           </Grid>
+        </Grid>
+
+        <Grid item xs={12} md={6}>
+          <Card>
+            <CardContent>
+              <Typography variant="h6" gutterBottom>
+                Department Balances
+              </Typography>
+                {balances.map((dept) => (
+                  <Box key={dept.dept_id} display="flex" justifyContent="space-between" alignItems="center" mb={1}>
+                    <Typography variant="body2">{dept.name}</Typography>
+                    <Box display="flex" alignItems="center" gap={1}>
+                      <Typography variant="body2">
+                        Balance: {formatCurrency(dept.balance)} / Budget: {formatCurrency(dept.budget)}
+                      </Typography>
+                      <Button
+                        size="small"
+                        onClick={() => {
+                          setDeptForm({ ...dept, allocated_budget: dept.budget });
+                          setEditBudgetDeptId(dept.dept_id);
+                          setEditBudgetDialogOpen(true);
+                        }}
+                        sx={{ ml: 1 }}
+                      >
+                        Edit
+                      </Button>
+                    </Box>
+                  </Box>
+                ))}
+            </CardContent>
+          </Card>
+        </Grid>
+        <Grid item xs={12} md={6}>
+          <Card>
+            <CardContent>
+              <Typography variant="h6" gutterBottom>
+                Admin Balance
+              </Typography>
+              <Typography variant="body2">
+                Balance: {formatCurrency(adminBalance)} / Budget: {formatCurrency(adminBudget)}
+              </Typography>
+            </CardContent>
+          </Card>
         </Grid>
 
         {/* Search + Filters (match Public view) */}
@@ -669,21 +753,19 @@ const fetchDashboardData = async () => {
               />
             </Grid>
             <Grid item xs={6} md={2}>
-              <FormControl size="small" fullWidth>
-                <InputLabel id="status-label">Status</InputLabel>
-                <Select
-                  labelId="status-label"
-                  label="Status"
-                  value={filters.status}
-                  onChange={(e) => setFilters({ ...filters, status: e.target.value })}
-                >
-                  <MenuItem value="">Any</MenuItem>
-                  <MenuItem value="Pending">Pending</MenuItem>
-                  <MenuItem value="Approved">Approved</MenuItem>
-                  <MenuItem value="Rejected">Rejected</MenuItem>
-                  <MenuItem value="Settled">Settled</MenuItem>
-                </Select>
-              </FormControl>
+            <FormControl size="small" sx={{ minWidth: 140 }}>
+              <InputLabel>Filter</InputLabel>
+              <Select
+                label="Filter"
+                value={filters.special || ''}
+                onChange={e => setFilters({ ...filters, special: e.target.value })}
+              >
+                <MenuItem value="">Any</MenuItem>
+                <MenuItem value="anomaly">Anomaly</MenuItem>
+                <MenuItem value="settled">Settled</MenuItem>
+                <MenuItem value="rejected">Rejected</MenuItem>
+              </Select>
+            </FormControl>
             </Grid>
             <Grid item xs={12} md={2} sx={{ textAlign: { xs: 'left', md: 'right' } }}>
               <Button
@@ -749,6 +831,9 @@ const fetchDashboardData = async () => {
                       <TableCell>{transaction.toDept || 'Unknown'}</TableCell>
                       <TableCell>
                         <Chip label={transaction.status} color={getStatusColor(transaction.status)} size="small" />
+                        {transaction.anomaly && (
+                          <Chip label="Anomaly" color="error" size="small" sx={{ ml: 1 }} />
+                        )}
                       </TableCell>
                       <TableCell>
                         <Box display="flex" alignItems="center" gap={1}>
@@ -914,6 +999,34 @@ const fetchDashboardData = async () => {
             </Button>
           </DialogActions>
         </Dialog>
+
+        {/* Edit Department Budget Dialog */}
+        <Dialog open={editBudgetDialogOpen} onClose={() => setEditBudgetDialogOpen(false)}>
+          <DialogTitle>Edit Department Budget</DialogTitle>
+          <DialogContent>
+            <TextField
+              label="New Budget"
+              type="number"
+              value={deptForm.allocated_budget}
+              onChange={e => setDeptForm({ ...deptForm, allocated_budget: e.target.value })}
+              fullWidth
+            />
+          </DialogContent>
+          <DialogActions>
+            <Button onClick={() => setEditBudgetDialogOpen(false)}>Cancel</Button>
+            <Button
+              variant="contained"
+              onClick={async () => {
+                await makeAuthenticatedRequest(`/api/departments/${editBudgetDeptId}/budget`, 'PUT', {
+                  allocated_budget: Number(deptForm.allocated_budget)
+                });
+                setEditBudgetDialogOpen(false);
+                fetchDashboardData();
+              }}
+            >Save</Button>
+          </DialogActions>
+        </Dialog>
+
       </Container>
     </Box>
   );
