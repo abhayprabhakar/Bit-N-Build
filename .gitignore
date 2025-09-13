@@ -1,31 +1,71 @@
-# Python
+# Python Backend
 venv/
 __pycache__/
 *.pyc
 *.pyo
 *.pyd
+*.db
+
+# Environment Variables
 .env
 .env.*
+.env.local
+.env.development.local
+.env.test.local
+.env.production.local
 
-# Node
+# pnpm deploy output
+/bundle
+
+# Node.js & Blockchain Backend
 node_modules/
 dist/
 build/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
 
-# Vite
+# Hardhat & Blockchain
+blockchain-backend/artifacts/
+blockchain-backend/cache/
+blockchain-backend/typechain-types/
+blockchain-backend/coverage/
+
+# Vite Frontend
 .vite/
+frontend/dist/
 
 # Logs
 *.log
+logs/
 
-# OS
+# OS Generated
 .DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
 Thumbs.db
 
 # VS Code
 .vscode/
+*.code-workspace
+
+# IDE
+.idea/
+*.swp
+*.swo
+
+# Coverage Reports
+coverage/
+*.lcov
 
 # Misc
+*.bak
+*.tmp
+*.tgz
+*.tar.gz
 *.swp
 *.swo
 
@@ -43,3 +83,6 @@ backend/.env
 # Others
 *.bak
 *.tmp
+
+# Blockchain specific
+blockchain-backend/.openzeppelin/
