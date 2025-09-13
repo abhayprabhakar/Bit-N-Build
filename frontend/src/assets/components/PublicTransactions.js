@@ -47,7 +47,7 @@ import DarkMode from '@mui/icons-material/DarkMode';
 import { useNavigate } from 'react-router-dom';
 import ChatIcon from '@mui/icons-material/Chat';
 import CloseIcon from '@mui/icons-material/Close';
-import { Fab, Dialog, DialogTitle, DialogContent, DialogActions, IconButton, TextField, List, ListItem, ListItemText } from '@mui/material';
+import { Fab, List, ListItem, ListItemText } from '@mui/material';
 
 import HomeIcon from '@mui/icons-material/Home';
 import ColorModeContext from '../../contexts/ColorModeContext';
