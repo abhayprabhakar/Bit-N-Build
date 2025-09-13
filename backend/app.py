@@ -128,7 +128,8 @@ def get_public_transactions():
                 "toDept": to_dept,
                 "status": trans.status.value,
                 "created_at": trans.created_at.isoformat(),
-                "transaction_hash": trans.blockchain_hash
+                "transaction_hash": trans.blockchain_hash,
+                "rejection_reason": trans.rejection_reason
             })
         
         return jsonify({
@@ -309,36 +310,19 @@ def create_transaction():
         if not creator:
             return jsonify({"success": False, "message": "Creator user not found"}), 400
 
-        # Prepare blockchain transaction data
+        # Prepare transaction data (do NOT call blockchain yet)
         if creator.role == UserRole.Admin:
             fromDept = "Admin"
         elif creator.role == UserRole.DeptHead:
-            # Find the department this user heads
             headed_dept = Department.query.filter_by(head_user_id=creator.user_id).first()
             fromDept = headed_dept.name if headed_dept else creator.name
         else:
-            fromDept = creator.name  # fallback
+            fromDept = creator.name
 
         toDept = dept.name
         amount = float(data['amount'])
         purpose = data['purpose']
 
-        # Call blockchain API
-        blockchain_api_url = "http://localhost:3001/api/transactions"
-        payload = {
-            "fromDept": fromDept,
-            "toDept": toDept,
-            "amount": str(amount),
-            "purpose": purpose
-        }
-        bc_response = requests.post(blockchain_api_url, json=payload)
-        bc_data = bc_response.json()
-        if not bc_data.get("success"):
-            return jsonify({"success": False, "message": "Blockchain error: " + bc_data.get("error", "Unknown error")}), 500
-
-        transaction_hash = bc_data.get("transactionHash")
-
-        # Save to local DB (status is now always Settled/Completed)
         last_tx = Transaction.query.order_by(Transaction.created_at.desc()).first()
         previous_hash = last_tx.current_hash if last_tx else ""
 
@@ -346,7 +330,7 @@ def create_transaction():
             "dept_id": str(dept_id),
             "amount": str(amount),
             "purpose": purpose,
-            "status": "Completed",
+            "status": "Pending",
             "created_by_id": str(created_by_id),
             "approved_by_id": "",
             "invoice_url": "",
@@ -358,13 +342,14 @@ def create_transaction():
             dept_id=dept_id,
             amount=amount,
             purpose=purpose,
-            status=TransactionStatus.Settled,
+            status=TransactionStatus.Pending,
             created_by_id=created_by_id,
             approved_by_id=None,
             invoice_url=None,
             previous_hash=previous_hash,
             current_hash=current_hash,
-            blockchain_hash=transaction_hash  # Add this field to your model if not present
+            blockchain_hash=None,
+            rejection_reason=None
         )
 
         db.session.add(transaction)
@@ -374,12 +359,71 @@ def create_transaction():
             "success": True,
             "transaction_id": transaction.transaction_id,
             "current_hash": current_hash,
-            "blockchain_hash": transaction_hash,
-            "message": "Transaction created and added to blockchain"
+            "message": "Transaction created and pending approval"
         }), 201
     except Exception as e:
         return jsonify({"success": False, "message": str(e)}), 500
-    
+
+@app.route('/api/transactions/<int:transaction_id>/approve', methods=['POST'])
+@jwt_required
+def approve_transaction(transaction_id):
+    try:
+        current_user_info = get_current_user()
+        user = User.query.get(current_user_info['user_id'])
+        tx = Transaction.query.get(transaction_id)
+        if not tx or tx.status != TransactionStatus.Pending:
+            return jsonify({"success": False, "message": "Transaction not found or not pending"}), 404
+
+        # Only the receiver (toDept) can approve
+        dept = Department.query.get(tx.dept_id)
+        if not dept or dept.head_user_id != user.user_id:
+            return jsonify({"success": False, "message": "Only the receiving department head can approve"}), 403
+
+        # Call blockchain API
+        payload = {
+            "fromDept": tx.creator.name if tx.created_by_id else "Unknown",
+            "toDept": dept.name,
+            "amount": str(tx.amount),
+            "purpose": tx.purpose
+        }
+        blockchain_api_url = "http://localhost:3001/api/transactions"
+        bc_response = requests.post(blockchain_api_url, json=payload)
+        bc_data = bc_response.json()
+        if not bc_data.get("success"):
+            return jsonify({"success": False, "message": "Blockchain error: " + bc_data.get("error", "Unknown error")}), 500
+
+        tx.status = TransactionStatus.Settled
+        tx.approved_by_id = user.user_id
+        tx.blockchain_hash = bc_data.get("transactionHash")
+        db.session.commit()
+        return jsonify({"success": True, "message": "Transaction approved and added to blockchain"})
+    except Exception as e:
+        return jsonify({"success": False, "message": str(e)}), 500
+
+@app.route('/api/transactions/<int:transaction_id>/reject', methods=['POST'])
+@jwt_required
+def reject_transaction(transaction_id):
+    try:
+        data = request.get_json()
+        reason = data.get("reason", "")
+        current_user_info = get_current_user()
+        user = User.query.get(current_user_info['user_id'])
+        tx = Transaction.query.get(transaction_id)
+        if not tx or tx.status != TransactionStatus.Pending:
+            return jsonify({"success": False, "message": "Transaction not found or not pending"}), 404
+
+        dept = Department.query.get(tx.dept_id)
+        if not dept or dept.head_user_id != user.user_id:
+            return jsonify({"success": False, "message": "Only the receiving department head can reject"}), 403
+
+        tx.status = TransactionStatus.Rejected
+        tx.approved_by_id = user.user_id
+        tx.rejection_reason = reason
+        db.session.commit()
+        return jsonify({"success": True, "message": "Transaction rejected"})
+    except Exception as e:
+        return jsonify({"success": False, "message": str(e)}), 500
+        
 # Public Ledger Routes
 @app.route('/api/ledger', methods=['GET'])
 def get_public_ledger():
@@ -402,7 +446,8 @@ def get_public_ledger():
                 "created_by": creator.name if creator else "Unknown",
                 "approved_by": approver.name if approver else None,
                 "created_at": tx.created_at.isoformat(),
-                "current_hash": tx.current_hash
+                "current_hash": tx.current_hash,
+                "rejection_reason": tx.rejection_reason
             })
         
         return jsonify(result), 200

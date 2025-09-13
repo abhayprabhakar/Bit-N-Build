@@ -698,6 +698,13 @@ const PublicTransactions = () => {
               </Box>
             </Box>
           ) : null}
+        {selectedTx?.status === 'Rejected' && selectedTx?.rejection_reason && (
+          <>
+            <Divider sx={{ my: 1 }} />
+            <Typography variant="subtitle2">Rejection Reason</Typography>
+            <Typography paragraph color="error">{selectedTx.rejection_reason}</Typography>
+          </>
+        )}
         </DialogContent>
         <DialogActions sx={{ bgcolor: 'transparent', borderTop: 'none' }}>
           <Button onClick={() => setDialogOpen(false)} sx={{ color: theme.palette.mode === 'dark' ? 'rgba(255,255,255,0.9)' : 'text.primary' }}>Close</Button>

@@ -54,6 +54,7 @@ import AccountCircleIcon from '@mui/icons-material/AccountCircle';
 import SwapHorizIcon from '@mui/icons-material/SwapHoriz';
 import FilterListIcon from '@mui/icons-material/FilterList';
 import ClearAllIcon from '@mui/icons-material/ClearAll';
+import Divider from '@mui/material/Divider';
 
 const AdminDashboard = () => {
   const theme = useTheme();
@@ -768,6 +769,48 @@ const fetchDashboardData = async () => {
                 </Box>
               </Box>
             ) : null}
+            {detailTx?.status === 'Rejected' && detailTx?.rejection_reason && (
+              <>
+                <Divider sx={{ my: 1 }} />
+                <Typography variant="subtitle2">Rejection Reason</Typography>
+                <Typography paragraph color="error">{detailTx.rejection_reason}</Typography>
+              </>
+            )}
+
+            {detailTx && detailTx.status === 'Pending' && currentUser && (
+              // Only show if current user is the receiver (toDept)
+              (() => {
+                // Find the department where current user is head
+                const myDept = departments.find(
+                  d => d.head_user_id === currentUser.user_id
+                );
+                if (myDept && myDept.name === detailTx.toDept) {
+                  return (
+                    <Box mt={2}>
+                      <Button
+                        variant="contained"
+                        color="success"
+                        sx={{ mr: 2 }}
+                        onClick={async () => {
+                          // Approve API call
+                          const res = await makeAuthenticatedRequest(`/api/transactions/${detailTx.transaction_id}/approve`, 'POST');
+                          if (res.success) {
+                            setDetailOpen(false);
+                            fetchDashboardData();
+                          } else {
+                            alert(res.message || 'Failed to approve');
+                          }
+                        }}
+                      >
+                        Approve
+                      </Button>
+                      <RejectButton detailTx={detailTx} fetchDashboardData={fetchDashboardData} setDetailOpen={setDetailOpen} />
+                    </Box>
+                  );
+                }
+                return null;
+              })()
+            )}
           </DialogContent>
           <DialogActions>
             <Button onClick={() => setDetailOpen(false)}>Close</Button>
@@ -840,5 +883,60 @@ const fetchDashboardData = async () => {
     </Box>
   );
 };
+
+function RejectButton({ detailTx, fetchDashboardData, setDetailOpen }) {
+  const { makeAuthenticatedRequest } = useAuth();
+  const [open, setOpen] = useState(false);
+  const [reason, setReason] = useState('');
+  const [error, setError] = useState('');
+
+  const handleReject = async () => {
+    if (!reason.trim()) {
+      setError('Please provide a rejection reason.');
+      return;
+    }
+    const res = await makeAuthenticatedRequest(
+      `/api/transactions/${detailTx.transaction_id}/reject`,
+      'POST',
+      { reason }
+    );
+    if (res.success) {
+      setOpen(false);
+      setDetailOpen(false);
+      fetchDashboardData();
+    } else {
+      setError(res.message || 'Failed to reject');
+    }
+  };
+
+  return (
+    <>
+      <Button variant="outlined" color="error" onClick={() => setOpen(true)}>
+        Reject
+      </Button>
+      <Dialog open={open} onClose={() => setOpen(false)}>
+        <DialogTitle>Reject Transaction</DialogTitle>
+        <DialogContent>
+          <TextField
+            label="Rejection Reason"
+            fullWidth
+            multiline
+            minRows={2}
+            value={reason}
+            onChange={e => setReason(e.target.value)}
+            error={!!error}
+            helperText={error}
+          />
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={() => setOpen(false)}>Cancel</Button>
+          <Button color="error" variant="contained" onClick={handleReject}>
+            Reject
+          </Button>
+        </DialogActions>
+      </Dialog>
+    </>
+  );
+}
 
 export default AdminDashboard;
