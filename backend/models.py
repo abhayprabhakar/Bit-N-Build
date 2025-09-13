@@ -73,5 +73,6 @@ class Transaction(db.Model):
     current_hash = db.Column(db.String(64), unique=True, nullable=False)
     blockchain_hash = db.Column(db.String(66), nullable=True)  # Ethereum tx hash is 66 chars
     rejection_reason = db.Column(db.Text, nullable=True)
+    anomaly = db.Column(db.Boolean, default=False) # Flag for anomaly detection
     def __repr__(self):
         return f'<Transaction {self.transaction_id}: {self.purpose}>'

@@ -144,6 +144,11 @@ const PublicTransactions = () => {
       if (filters.to && !(t.toDept || '').toLowerCase().includes(filters.to.toLowerCase())) return false;
       // status filter (case-insensitive exact match)
       if (filters.status && (String(t.status || '').toLowerCase() !== String(filters.status || '').toLowerCase())) return false;
+      if (filters.anomaly === "true" && !t.anomaly) return false;
+      if (filters.anomaly === "false" && t.anomaly) return false;
+      if (filters.special === "anomaly" && !t.anomaly) return false;
+      if (filters.special === "settled" && String(t.status).toLowerCase() !== "settled") return false;
+      if (filters.special === "rejected" && (String(t.status).toLowerCase() !== "rejected" || t.anomaly)) return false;
       return true;
     });
   };
@@ -490,6 +495,19 @@ const PublicTransactions = () => {
                   <MenuItem value="Settled">Settled</MenuItem>
                 </Select>
               </FormControl>
+            <FormControl size="small" sx={{ minWidth: 140 }}>
+              <InputLabel>Filter</InputLabel>
+              <Select
+                label="Filter"
+                value={filters.special || ''}
+                onChange={e => setFilters({ ...filters, special: e.target.value })}
+              >
+                <MenuItem value="">Any</MenuItem>
+                <MenuItem value="anomaly">Anomaly</MenuItem>
+                <MenuItem value="settled">Settled</MenuItem>
+                <MenuItem value="rejected">Rejected</MenuItem>
+              </Select>
+            </FormControl>
               <Button variant="text" size="small" onClick={() => { setFilters({ minAmount: '', maxAmount: '', from: '', to: '', status: '' }); setSearch(''); }} startIcon={<ClearAllIcon fontSize="small" />}>
                 Clear
               </Button>
@@ -596,6 +614,9 @@ const PublicTransactions = () => {
                             })()
                           }}
                         />
+                        {transaction.anomaly && (
+                          <Chip label="Anomaly" color="error" size="small" sx={{ ml: 1 }} />
+                        )}
                       </TableCell>
                       <TableCell>
                         <Box display="flex" alignItems="center" sx={{ gap: 1 }}>

@@ -142,11 +142,11 @@ export const AuthProvider = ({ children }) => {
     }
   };
 
-  const addDepartment = async (name, password, confirmPassword) => {
+  const addDepartment = async (name, password, confirmPassword, allocated_budget) => {
     return await makeAuthenticatedRequest(
       '/api/departments',
       'POST',
-      { name, password, confirm_password: confirmPassword }
+      { name, password, confirm_password: confirmPassword, allocated_budget }
     );
   };
   const value = {

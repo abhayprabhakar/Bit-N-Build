@@ -129,7 +129,8 @@ def get_public_transactions():
                 "status": trans.status.value,
                 "created_at": trans.created_at.isoformat(),
                 "transaction_hash": trans.blockchain_hash,
-                "rejection_reason": trans.rejection_reason
+                "rejection_reason": trans.rejection_reason,
+                "anomaly": trans.anomaly,
             })
         
         return jsonify({
@@ -209,12 +210,13 @@ def create_department():
         db.session.add(dept_head)
         db.session.commit()
 
+        allocated_budget = float(data.get('allocated_budget', 0.00))
         dept = Department(
             name=dept_email.split('@')[0].replace('.', ' ').title(),
             description=data.get('description', ''),
             parent_dept_id=data.get('parent_dept_id'),
             head_user_id=dept_head.user_id,
-            allocated_budget=data.get('allocated_budget', 0.00)
+            allocated_budget=allocated_budget
         )
         db.session.add(dept)
         db.session.commit()
@@ -245,7 +247,7 @@ def get_departments():
                 "parent_dept_id": str(dept.parent_dept_id) if dept.parent_dept_id else None,
                 "head_user_id": str(dept.head_user_id) if dept.head_user_id else None,
                 "head_user_name": head_user.name if head_user else None,
-                "allocated_budget": float(dept.allocated_budget),
+                "allocated_budget": float(dept.allocated_budget or 0),
                 "created_at": dept.created_at.isoformat()
             })
         # FIX: Return as {departments: [...]}
@@ -271,7 +273,7 @@ def get_department(dept_id):
                 "dept_id": str(sub_dept.dept_id),
                 "name": sub_dept.name,
                 "head_user_name": sub_head.name if sub_head else None,
-                "allocated_budget": float(sub_dept.allocated_budget)
+                "allocated_budget": float(sub_dept.allocated_budget or 0)
             })
         
         result = {
@@ -281,7 +283,7 @@ def get_department(dept_id):
             "parent_dept_id": str(dept.parent_dept_id) if dept.parent_dept_id else None,
             "head_user_id": str(dept.head_user_id) if dept.head_user_id else None,
             "head_user_name": head_user.name if head_user else None,
-            "allocated_budget": float(dept.allocated_budget),
+            "allocated_budget": float(dept.allocated_budget or 0),
             "created_at": dept.created_at.isoformat(),
             "sub_departments": sub_dept_list
         }
@@ -294,6 +296,34 @@ def get_department(dept_id):
 @jwt_required
 def create_transaction():
     try:
+        data = request.get_json()
+        dept_id = data.get('dept_id')
+        if not dept_id:
+            return jsonify({"success": False, "message": "Department ID is required"}), 400
+
+        dept = Department.query.get(dept_id)
+        if not dept:
+            return jsonify({"success": False, "message": "Department not found"}), 400
+
+        # Calculate department's current balance
+        transactions = Transaction.query.filter(
+            Transaction.dept_id == dept_id,
+            Transaction.status.in_([TransactionStatus.Settled, TransactionStatus.Approved])
+        ).all()
+        dept_in = sum(float(tx.amount) for tx in transactions if tx.dept_id == dept_id)
+        dept_out = 0  # If you have outgoing logic, add here
+        current_balance = dept_in - dept_out
+
+        allocated_budget = float(dept.allocated_budget or 0)
+        amount = float(data['amount'])
+
+        # If spending more than budget, tag as anomaly and set status
+        is_anomaly = False
+        if amount > allocated_budget:
+            is_anomaly = True
+            status = TransactionStatus.Rejected  # Or create a new status "Anomaly"
+        else:
+            status = TransactionStatus.Pending
         data = request.get_json()
         current_user_info = get_current_user()
         created_by_id = current_user_info['user_id']
@@ -342,14 +372,15 @@ def create_transaction():
             dept_id=dept_id,
             amount=amount,
             purpose=purpose,
-            status=TransactionStatus.Pending,
+            status=status,
             created_by_id=created_by_id,
             approved_by_id=None,
             invoice_url=None,
             previous_hash=previous_hash,
             current_hash=current_hash,
             blockchain_hash=None,
-            rejection_reason=None
+            rejection_reason="Budget overrun" if is_anomaly else None,
+            anomaly=is_anomaly
         )
 
         db.session.add(transaction)
@@ -447,7 +478,8 @@ def get_public_ledger():
                 "approved_by": approver.name if approver else None,
                 "created_at": tx.created_at.isoformat(),
                 "current_hash": tx.current_hash,
-                "rejection_reason": tx.rejection_reason
+                "rejection_reason": tx.rejection_reason,
+                "anomaly": tx.anomaly
             })
         
         return jsonify(result), 200
@@ -531,7 +563,7 @@ def get_department_budget_report(dept_id):
         result = {
             "dept_id": str(dept.dept_id),
             "dept_name": dept.name,
-            "allocated_budget": float(dept.allocated_budget),
+            "allocated_budget": float(dept.allocated_budget or 0),
             "total_received": total_received,
             "total_spent": abs(total_spent),
             "remaining_budget": float(dept.allocated_budget) + total_received + total_spent,
@@ -540,6 +572,117 @@ def get_department_budget_report(dept_id):
         }
         
         return jsonify(result), 200
+    except Exception as e:
+        return jsonify({"success": False, "message": str(e)}), 500
+
+@app.route('/api/departments/<dept_id>/budget', methods=['PUT'])
+@jwt_required
+def update_department_budget(dept_id):
+    try:
+        current_user_info = get_current_user()
+        admin_user = User.query.get(current_user_info['user_id'])
+        if not admin_user or admin_user.role != UserRole.Admin:
+            return jsonify({"success": False, "message": "Only admin can update budgets"}), 403
+
+        data = request.get_json()
+        new_budget = float(data.get('allocated_budget', 0))
+        dept = Department.query.get(dept_id)
+        if not dept:
+            return jsonify({"success": False, "message": "Department not found"}), 404
+
+        dept.allocated_budget = new_budget
+        db.session.commit()
+        return jsonify({"success": True, "message": "Budget updated"})
+    except Exception as e:
+        db.session.rollback()
+        return jsonify({"success": False, "message": str(e)}), 500
+    
+@app.route('/api/departments/balances', methods=['GET'])
+@jwt_required
+def get_department_balances():
+    """
+    Returns balances, budgets, and anomaly alerts for all departments and admin.
+    """
+    try:
+        departments = Department.query.all()
+        transactions = Transaction.query.filter(Transaction.status.in_([TransactionStatus.Settled, TransactionStatus.Approved])).all()
+        result = []
+        alerts = []
+
+        # Calculate admin balance (admin is sender for all outgoing tx)
+        admin_out = 0
+        admin_in = 0
+        for tx in transactions:
+            creator = User.query.get(tx.created_by_id)
+            if creator and creator.role == UserRole.Admin:
+                from_dept = "Admin"
+            elif creator and creator.role == UserRole.DeptHead:
+                headed_dept = Department.query.filter_by(head_user_id=creator.user_id).first()
+                from_dept = headed_dept.name if headed_dept else creator.name
+            else:
+                from_dept = creator.name if creator else "Unknown"
+            to_dept = Department.query.get(tx.dept_id).name if tx.dept_id else "Unknown"
+            if from_dept == "Admin":
+                admin_out += float(tx.amount)
+            if to_dept == "Admin":
+                admin_in += float(tx.amount)
+        admin_budget = 100_000_000  # Admin preset budget
+        admin_balance = 500_000_000 + admin_in - admin_out  # Admin preset balance plus net in/out
+
+        # Anomaly for admin
+        if admin_budget and admin_out > admin_budget:
+            alerts.append({
+                "type": "overrun",
+                "entity": "Admin",
+                "amount": admin_out,
+                "budget": admin_budget,
+                "message": f"Admin has spent {admin_out}, which exceeds the budget of {admin_budget}."
+            })
+
+        # For each department
+        for dept in departments:
+            dept_in = 0
+            dept_out = 0
+            for tx in transactions:
+                creator = User.query.get(tx.created_by_id)
+                if creator and creator.role == UserRole.Admin:
+                    from_dept = "Admin"
+                elif creator and creator.role == UserRole.DeptHead:
+                    headed_dept = Department.query.filter_by(head_user_id=creator.user_id).first()
+                    from_dept = headed_dept.name if headed_dept else creator.name
+                else:
+                    from_dept = creator.name if creator else "Unknown"
+                to_dept = Department.query.get(tx.dept_id).name if tx.dept_id else "Unknown"
+                if to_dept == dept.name:
+                    dept_in += float(tx.amount)
+                if from_dept == dept.name:
+                    dept_out += float(tx.amount)
+            balance = dept_in - dept_out
+            budget = float(dept.allocated_budget or 0)
+            result.append({
+                "dept_id": str(dept.dept_id),
+                "name": dept.name,
+                "budget": budget,
+                "balance": balance
+            })
+            if budget and balance < 0:
+                alerts.append({
+                    "type": "overrun",
+                    "entity": dept.name,
+                    "amount": abs(balance),
+                    "budget": budget,
+                    "message": f"{dept.name} has overspent by {abs(balance):,.2f} (budget: {budget:,.2f})."
+                })
+
+        return jsonify({
+            "success": True,
+            "departments": result,
+            "admin": {
+                "balance": admin_balance,
+                "budget": admin_budget
+            },
+            "alerts": alerts
+        }), 200
     except Exception as e:
         return jsonify({"success": False, "message": str(e)}), 500
 
