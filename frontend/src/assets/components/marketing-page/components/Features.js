@@ -15,27 +15,27 @@ import ViewQuiltRoundedIcon from '@mui/icons-material/ViewQuiltRounded';
 const items = [
   {
     icon: <ViewQuiltRoundedIcon />,
-    title: 'Dashboard',
+    title: 'Public Ledger Verification',
     description:
-      'This item could provide a snapshot of the most important metrics or data points related to the product.',
-  imageLight: `url("${import.meta.env.VITE_TEMPLATE_IMAGE_URL || 'https://mui.com'}/static/images/templates/templates-images/dash-light.png")`,
-  imageDark: `url("${import.meta.env.VITE_TEMPLATE_IMAGE_URL || 'https://mui.com'}/static/images/templates/templates-images/dash-dark.png")`,
+      'A feature where anyone can view a simplified version of the transaction log. They can see the amount, purpose, and timestamp of transactions, ensuring nothing is hidden.',
+  imageLight: `url("/images/immutable.png")`,
+  imageDark: `url("/images/immutable.png")`,
   },
   {
     icon: <EdgesensorHighRoundedIcon />,
-    title: 'Mobile integration',
+    title: 'Interactive Budget Visualization',
     description:
-      'This item could provide information about the mobile app version of the product.',
-  imageLight: `url("${import.meta.env.VITE_TEMPLATE_IMAGE_URL || 'https://mui.com'}/static/images/templates/templates-images/mobile-light.png")`,
-  imageDark: `url("${import.meta.env.VITE_TEMPLATE_IMAGE_URL || 'https://mui.com'}/static/images/templates/templates-images/mobile-dark.png")`,
+      'A simple, easy-to-understand visual dashboard (e.g., a sunburst chart or treemap) that shows how the total budget is divided among all departments and projects.',
+  imageLight: `url("images/vis.png")`,
+  imageDark: `url("images/vis.png")`,
   },
   {
     icon: <DevicesRoundedIcon />,
-    title: 'Available on all platforms',
+    title: 'Immutable Transactions',
     description:
-      'This item could let users know the product is available on all platforms, such as web, mobile, and desktop.',
-  imageLight: `url("${import.meta.env.VITE_TEMPLATE_IMAGE_URL || 'https://mui.com'}/static/images/templates/templates-images/devices-light.png")`,
-  imageDark: `url("${import.meta.env.VITE_TEMPLATE_IMAGE_URL || 'https://mui.com'}/static/images/templates/templates-images/devices-dark.png")`,
+      'Every financial action—be it a budget allocation or an expense payment—is recorded as a transaction. Each transaction is cryptographically hashed and chained to the previous one, creating an unchangeable and verifiable audit trail. This directly solves the problem of data being secretly altered.',
+  imageLight: `url("images/trans.png")`,
+  imageDark: `url("images/trans.png")`,
   },
 ];
 
@@ -158,9 +158,7 @@ export default function Features() {
           variant="body1"
           sx={{ color: 'text.secondary', mb: { xs: 2, sm: 4 } }}
         >
-          Provide a brief overview of the key features of the product. For example,
-          you could list the number of features, their types or benefits, and
-          add-ons.
+          To build a digital solution that brings absolute clarity and trust to institutional finances. We will create a platform that makes the flow of funds easy to follow, understand, and, most importantly, trust. Our system will ensure that every transaction is authentic, traceable, and reliable.
         </Typography>
       </Box>
       <Box

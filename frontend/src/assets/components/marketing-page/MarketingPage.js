@@ -19,16 +19,22 @@ export default function MarketingPage(props) {
       <AppAppBar />
       <Hero />
       <div>
-        <LogoCollection />
-        <Features />
+        {/* <LogoCollection /> */}
+        <div id="features">
+          <Features />
+        </div>
+        {/* <Divider />
+        <Testimonials /> */}
         <Divider />
-        <Testimonials />
+        <div id="highlights">
+          <Highlights />
+        </div>
         <Divider />
-        <Highlights />
-        <Divider />
-        <Pricing />
-        <Divider />
-        <FAQ />
+        {/* <Pricing />
+        <Divider /> */}
+        <div id="faq">
+          <FAQ />
+        </div>
         <Divider />
         <Footer />
       </div>

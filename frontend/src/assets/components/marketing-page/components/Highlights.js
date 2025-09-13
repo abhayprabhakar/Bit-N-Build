@@ -15,39 +15,39 @@ import ThumbUpAltRoundedIcon from '@mui/icons-material/ThumbUpAltRounded';
 const items = [
   {
     icon: <SettingsSuggestRoundedIcon />,
-    title: 'Adaptable performance',
+    title: 'Verifiable Trust',
     description:
-      'Our product effortlessly adjusts to your needs, boosting efficiency and simplifying your tasks.',
+      'Our product effortlessly adjusts to your needs, boosting efficiency and simplifying your tasks. Track every rupee through an immutable ledger, providing a single source of truth that cannot be altered or deleted.',
   },
   {
     icon: <ConstructionRoundedIcon />,
-    title: 'Built to last',
+    title: 'Structured Control',
     description:
-      'Experience unmatched durability that goes above and beyond with lasting investment.',
+      'Mirror your real-world organization with a hierarchical system, allowing you to allocate and manage budgets with precision across departments and sub-departments.',
   },
   {
     icon: <ThumbUpAltRoundedIcon />,
-    title: 'Great user experience',
+    title: 'Intuitive Oversight',
     description:
-      'Integrate our product into your routine with an intuitive and easy-to-use interface.',
+      'Empower stakeholders with a public-facing dashboard where interactive charts make complex financial data easy for anyone to understand and explore.',
   },
   {
     icon: <AutoFixHighRoundedIcon />,
-    title: 'Innovative functionality',
+    title: 'Guaranteed Authenticity',
     description:
-      'Stay ahead with features that set new standards, addressing your evolving needs better than the rest.',
+      'Rely on a system where every transaction is cryptographically chained, ensuring the data is authentic, traceable, and reliable.',
   },
   {
     icon: <SupportAgentRoundedIcon />,
-    title: 'Reliable support',
+    title: 'Secure Collaboration',
     description:
-      'Count on our responsive customer support, offering assistance that goes beyond the purchase.',
+      'Manage your team effectively with role-based access and multi-stage approval workflows, ensuring funds are handled with accountability.',
   },
   {
     icon: <QueryStatsRoundedIcon />,
-    title: 'Precision in every detail',
+    title: 'Insightful Analytics',
     description:
-      'Enjoy a meticulously crafted product where small touches make a significant impact on your overall experience.',
+      'Make informed decisions with automated, consolidated reports that provide a clear overview of spending across your entire department and its subsidiaries.',
   },
 ];
 

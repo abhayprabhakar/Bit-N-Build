@@ -29,7 +29,7 @@ const StyledBox = styled('div')(({ theme }) => ({
   },
   ...theme.applyStyles('dark', {
     boxShadow: '0 0 24px 12px hsla(210, 100%, 25%, 0.2)',
-  backgroundImage: `url('images/image.png')`,
+  backgroundImage: `url('images/dash.png')`,
     outlineColor: 'hsla(220, 20%, 42%, 0.1)',
     borderColor: (theme.vars || theme).palette.grey[700],
   }),
@@ -73,7 +73,7 @@ export default function Hero() {
               fontSize: 'clamp(3rem, 10vw, 3.5rem)',
             }}
           >
-            Our&nbsp;latest&nbsp;
+            Verifiable&nbsp;Financial&nbsp;
             <Typography
               component="span"
               variant="h1"
@@ -85,7 +85,7 @@ export default function Hero() {
                 }),
               })}
             >
-              products
+              Integrity
             </Typography>
           </Typography>
           <Typography
@@ -95,11 +95,9 @@ export default function Hero() {
               width: { sm: '100%', md: '80%' },
             }}
           >
-            Explore our cutting-edge dashboard, delivering high-quality solutions
-            tailored to your needs. Elevate your experience with top-tier features
-            and services.
+            A platform for transparent budget and expense tracking.
           </Typography>
-          <Stack
+          {/* <Stack
             direction={{ xs: 'column', sm: 'row' }}
             spacing={1}
             useFlexGap
@@ -142,7 +140,7 @@ export default function Hero() {
               Terms & Conditions
             </Link>
             .
-          </Typography>
+          </Typography> */}
         </Stack>
         <StyledBox id="image" />
       </Container>

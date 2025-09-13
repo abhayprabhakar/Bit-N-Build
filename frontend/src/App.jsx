@@ -60,7 +60,7 @@ function App() {
           <BrowserRouter>
             <Routes>
               {/* Public route - default view for all users */}
-              <Route path="/" element={<PublicTransactions />} />
+              <Route path="/public" element={<PublicTransactions />} />
               {/* Authentication routes */}
               <Route path="/signin" element={<SignIn />} />
               {/* Protected admin routes */}
@@ -72,10 +72,14 @@ function App() {
                   </ProtectedRoute>
                 }
               />
-                {/* Home route */}
-                <Route path="/home" element={<Home />} />
-              {/* Catch all - redirect to public view */}
-              <Route path="*" element={<Navigate to="/" replace />} />
+                {/* Root: landing page */}
+                <Route path="/" element={<Home />} />
+                {/* Keep public ledger at /public */}
+                <Route path="/public" element={<PublicTransactions />} />
+                {/* Back-compat: /home -> / */}
+                <Route path="/home" element={<Navigate to="/" replace />} />
+                {/* Catch all - redirect to root landing */}
+                <Route path="*" element={<Navigate to="/" replace />} />
             </Routes>
           </BrowserRouter>
         </AuthProvider>

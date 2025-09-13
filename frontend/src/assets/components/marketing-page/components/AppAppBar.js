@@ -7,6 +7,7 @@ import Button from '@mui/material/Button';
 import IconButton from '@mui/material/IconButton';
 import Container from '@mui/material/Container';
 import Divider from '@mui/material/Divider';
+import { useNavigate } from 'react-router-dom';
 import MenuItem from '@mui/material/MenuItem';
 import Drawer from '@mui/material/Drawer';
 import MenuIcon from '@mui/icons-material/Menu';
@@ -32,6 +33,7 @@ const StyledToolbar = styled(Toolbar)(({ theme }) => ({
 
 export default function AppAppBar() {
   const [open, setOpen] = React.useState(false);
+  const navigate = useNavigate();
 
   const toggleDrawer = (newOpen) => () => {
     setOpen(newOpen);
@@ -51,26 +53,26 @@ export default function AppAppBar() {
       <Container maxWidth="lg">
         <StyledToolbar variant="dense" disableGutters>
           <Box sx={{ flexGrow: 1, display: 'flex', alignItems: 'center', px: 0 }}>
-            <Sitemark />
+            
             <Box sx={{ display: { xs: 'none', md: 'flex' } }}>
-              <Button variant="text" color="info" size="small">
+              <Button variant="text" color="info" size="small" onClick={() => navigate('/#features')}>
                 Features
               </Button>
-              <Button variant="text" color="info" size="small">
+              {/* <Button variant="text" color="info" size="small">
                 Testimonials
-              </Button>
-              <Button variant="text" color="info" size="small">
+              </Button> */}
+              <Button variant="text" color="info" size="small" onClick={() => navigate('/#highlights')}>
                 Highlights
               </Button>
-              <Button variant="text" color="info" size="small">
+              {/* <Button variant="text" color="info" size="small">
                 Pricing
-              </Button>
-              <Button variant="text" color="info" size="small" sx={{ minWidth: 0 }}>
+              </Button> */}
+              <Button variant="text" color="info" size="small" sx={{ minWidth: 0 }} onClick={() => navigate('/#faq')}>
                 FAQ
               </Button>
-              <Button variant="text" color="info" size="small" sx={{ minWidth: 0 }}>
+              {/* <Button variant="text" color="info" size="small" sx={{ minWidth: 0 }}>
                 Blog
-              </Button>
+              </Button> */}
             </Box>
           </Box>
           <Box
@@ -80,11 +82,11 @@ export default function AppAppBar() {
               alignItems: 'center',
             }}
           >
-            <Button color="primary" variant="text" size="small">
-              Sign in
+            <Button color="primary" variant="text" size="small" onClick={() => navigate('/public')}>
+              Public View
             </Button>
-            <Button color="primary" variant="contained" size="small">
-              Sign up
+            <Button color="primary" variant="contained" size="small" onClick={() => navigate('/signin')}>
+              Login
             </Button>
             <ColorModeIconDropdown />
           </Box>
@@ -115,21 +117,21 @@ export default function AppAppBar() {
                   </IconButton>
                 </Box>
 
-                <MenuItem>Features</MenuItem>
-                <MenuItem>Testimonials</MenuItem>
-                <MenuItem>Highlights</MenuItem>
-                <MenuItem>Pricing</MenuItem>
-                <MenuItem>FAQ</MenuItem>
-                <MenuItem>Blog</MenuItem>
+                <MenuItem onClick={() => { setOpen(false); navigate('/#features'); }}>Features</MenuItem>
+                <MenuItem onClick={() => { setOpen(false); navigate('/#testimonials'); }}>Testimonials</MenuItem>
+                <MenuItem onClick={() => { setOpen(false); navigate('/#highlights'); }}>Highlights</MenuItem>
+                <MenuItem onClick={() => { setOpen(false); navigate('/#pricing'); }}>Pricing</MenuItem>
+                <MenuItem onClick={() => { setOpen(false); navigate('/#faq'); }}>FAQ</MenuItem>
+                <MenuItem onClick={() => { setOpen(false); navigate('/#blog'); }}>Blog</MenuItem>
                 <Divider sx={{ my: 3 }} />
                 <MenuItem>
-                  <Button color="primary" variant="contained" fullWidth>
-                    Sign up
+                  <Button color="primary" variant="contained" fullWidth onClick={() => { setOpen(false); navigate('/public'); }}>
+                    Public View
                   </Button>
                 </MenuItem>
                 <MenuItem>
-                  <Button color="primary" variant="outlined" fullWidth>
-                    Sign in
+                  <Button color="primary" variant="outlined" fullWidth onClick={() => { setOpen(false); navigate('/signin'); }}>
+                    Login
                   </Button>
                 </MenuItem>
               </Box>
