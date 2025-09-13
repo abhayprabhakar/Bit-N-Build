@@ -10,6 +10,7 @@ import logging
 import re
 import requests
 import os
+from models import Feedback
 
 app = Flask(__name__)
 app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///transparency_ledger.db'  # Using SQLite for simplicity
@@ -786,6 +787,28 @@ def chatbot():
         return jsonify({"answer": answer})
     except Exception as e:
         return jsonify({"answer": f"Error: {str(e)}"}), 500
+    
+@app.route('/api/feedback/<int:transaction_id>', methods=['GET'])
+def get_feedback(transaction_id):
+    feedbacks = Feedback.query.filter_by(transaction_id=transaction_id).order_by(Feedback.created_at.desc()).all()
+    return jsonify([
+        {
+            "feedback_id": f.feedback_id,
+            "comment": f.comment,
+            "created_at": f.created_at.isoformat()
+        } for f in feedbacks
+    ]), 200
+
+@app.route('/api/feedback/<int:transaction_id>', methods=['POST'])
+def add_feedback(transaction_id):
+    data = request.get_json()
+    comment = data.get('comment', '').strip()
+    if not comment:
+        return jsonify({"success": False, "message": "Comment required"}), 400
+    feedback = Feedback(transaction_id=transaction_id, comment=comment)
+    db.session.add(feedback)
+    db.session.commit()
+    return jsonify({"success": True, "message": "Feedback added"}), 201
 
 if __name__ == '__main__':
     app.run(debug=True)

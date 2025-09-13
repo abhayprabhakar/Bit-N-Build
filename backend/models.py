@@ -76,3 +76,10 @@ class Transaction(db.Model):
     anomaly = db.Column(db.Boolean, default=False) # Flag for anomaly detection
     def __repr__(self):
         return f'<Transaction {self.transaction_id}: {self.purpose}>'
+    
+class Feedback(db.Model):
+    __tablename__ = 'feedback'
+    feedback_id = db.Column(db.Integer, primary_key=True, autoincrement=True)
+    transaction_id = db.Column(db.Integer, db.ForeignKey('transactions.transaction_id'), nullable=False)
+    comment = db.Column(db.Text, nullable=False)
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
