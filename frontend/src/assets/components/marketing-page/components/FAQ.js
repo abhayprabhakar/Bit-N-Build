@@ -52,7 +52,7 @@ export default function FAQ() {
             id="panel1d-header"
           >
             <Typography component="span" variant="subtitle2">
-              1. What is this platform?
+              What is this platform?
             </Typography>
           </AccordionSummary>
           <AccordionDetails>
