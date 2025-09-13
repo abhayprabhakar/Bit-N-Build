@@ -36,7 +36,7 @@ import { useAuth } from '../../contexts/LocalAuthContext';
 import { useNavigate } from 'react-router-dom';
 
 const AdminDashboard = () => {
-  const { currentUser, logout, makeAuthenticatedRequest } = useAuth();
+  const { currentUser, logout, makeAuthenticatedRequest, addDepartment } = useAuth();
   const [transactions, setTransactions] = useState([]);
   const [departments, setDepartments] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -44,6 +44,10 @@ const AdminDashboard = () => {
   const [success, setSuccess] = useState('');
   const [openDialog, setOpenDialog] = useState(false);
   const navigate = useNavigate();
+  const [addDeptDialogOpen, setAddDeptDialogOpen] = useState(false);
+  const [deptForm, setDeptForm] = useState({ name: '', password: '', confirmPassword: '' });
+  const [deptError, setDeptError] = useState('');
+  const [deptSuccess, setDeptSuccess] = useState('');
 
   // Form state for new transaction
   const [newTransaction, setNewTransaction] = useState({
@@ -56,28 +60,27 @@ const AdminDashboard = () => {
     fetchDashboardData();
   }, []);
 
-  const fetchDashboardData = async () => {
-    try {
-      // Fetch departments and transactions
-      const [deptResponse, transResponse] = await Promise.all([
-        makeAuthenticatedRequest('/api/departments'),
-        fetch('http://localhost:5000/api/public/transactions').then(res => res.json())
-      ]);
+const fetchDashboardData = async () => {
+  try {
+    // Fetch departments and transactions
+    const [deptResponse, transResponse] = await Promise.all([
+      makeAuthenticatedRequest('/api/departments'),
+      fetch('http://localhost:5000/api/public/transactions').then(res => res.json())
+    ]);
 
-      if (deptResponse.success) {
-        setDepartments(deptResponse.departments || []);
-      }
+    // FIX: departments API returns an array, not {departments: [...]}
+    setDepartments(Array.isArray(deptResponse) ? deptResponse : deptResponse.departments || []);
 
-      if (transResponse.success) {
-        setTransactions(transResponse.transactions || []);
-      }
-    } catch (error) {
-      console.error('Error fetching dashboard data:', error);
-      setError('Failed to load dashboard data');
-    } finally {
-      setLoading(false);
+    if (transResponse.success) {
+      setTransactions(transResponse.transactions || []);
     }
-  };
+  } catch (error) {
+    console.error('Error fetching dashboard data:', error);
+    setError('Failed to load dashboard data');
+  } finally {
+    setLoading(false);
+  }
+};
 
   const handleLogout = async () => {
     try {
@@ -99,7 +102,7 @@ const AdminDashboard = () => {
   const handleAddTransaction = async () => {
     try {
       setError('');
-      
+
       // Validate required fields
       if (!newTransaction.amount || !newTransaction.purpose || !newTransaction.dept_id) {
         setError('Please fill in all required fields including department selection');
@@ -109,7 +112,7 @@ const AdminDashboard = () => {
       const transactionData = {
         amount: parseFloat(newTransaction.amount),
         purpose: newTransaction.purpose,
-        dept_id: newTransaction.dept_id || departments[0]?.dept_id,
+        dept_id: newTransaction.dept_id,
         status: 'Pending'
       };
 
@@ -137,6 +140,47 @@ const AdminDashboard = () => {
     } catch (error) {
       console.error('Error adding transaction:', error);
       setError(error.message || 'Failed to add transaction');
+    }
+  };
+
+  // Add Department handlers
+  const handleDeptInputChange = (e) => {
+    setDeptForm({ ...deptForm, [e.target.name]: e.target.value });
+  };
+
+  const handleAddDepartment = async () => {
+    setDeptError('');
+    setDeptSuccess('');
+    // Email regex
+    const emailRegex = /^[\w\.-]+@[\w\.-]+\.\w+$/;
+    if (!deptForm.name || !deptForm.password || !deptForm.confirmPassword) {
+      setDeptError('All fields are required');
+      return;
+    }
+    if (!emailRegex.test(deptForm.name)) {
+      setDeptError('Department name must be a valid email address');
+      return;
+    }
+    if (deptForm.password.length < 6) {
+      setDeptError('Password must be at least 6 characters');
+      return;
+    }
+    if (deptForm.password !== deptForm.confirmPassword) {
+      setDeptError('Passwords do not match');
+      return;
+    }
+    try {
+      const res = await addDepartment(deptForm.name, deptForm.password, deptForm.confirmPassword);
+      if (res.success) {
+        setDeptSuccess(`Department created! Login: ${res.head_user_email}`);
+        setDeptForm({ name: '', password: '', confirmPassword: '' });
+        setAddDeptDialogOpen(false);
+        fetchDashboardData();
+      } else {
+        setDeptError(res.message || 'Failed to create department');
+      }
+    } catch (err) {
+      setDeptError(err.message || 'Failed to create department');
     }
   };
 
@@ -229,6 +273,52 @@ const AdminDashboard = () => {
             Add Transaction
           </Button>
         </Box>
+      <Button
+        variant="contained"
+        color="primary"
+        onClick={() => setAddDeptDialogOpen(true)}
+        sx={{ ml: 2 }}
+      >
+        Add Department
+      </Button>
+      {/* Add Department Dialog */}
+      <Dialog open={addDeptDialogOpen} onClose={() => setAddDeptDialogOpen(false)}>
+        <DialogTitle>Add Department</DialogTitle>
+        <DialogContent>
+          <TextField
+            margin="dense"
+            label="Department Name"
+            name="name"
+            fullWidth
+            value={deptForm.name}
+            onChange={handleDeptInputChange}
+          />
+          <TextField
+            margin="dense"
+            label="Password"
+            name="password"
+            type="password"
+            fullWidth
+            value={deptForm.password}
+            onChange={handleDeptInputChange}
+          />
+          <TextField
+            margin="dense"
+            label="Confirm Password"
+            name="confirmPassword"
+            type="password"
+            fullWidth
+            value={deptForm.confirmPassword}
+            onChange={handleDeptInputChange}
+          />
+          {deptError && <div style={{ color: 'red' }}>{deptError}</div>}
+          {deptSuccess && <div style={{ color: 'green' }}>{deptSuccess}</div>}
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={() => setAddDeptDialogOpen(false)}>Cancel</Button>
+          <Button onClick={handleAddDepartment} variant="contained">Create</Button>
+        </DialogActions>
+      </Dialog>
 
         {error && (
           <Alert severity="error" sx={{ mb: 3 }} onClose={() => setError('')}>
@@ -248,7 +338,7 @@ const AdminDashboard = () => {
             <Card>
               <CardContent>
                 <Typography variant="h6" gutterBottom>
-                  Total Transactions
+                  Blockchain Transactions
                 </Typography>
                 <Typography variant="h4" color="primary">
                   {transactions.length}
@@ -310,47 +400,50 @@ const AdminDashboard = () => {
                     <TableCell><strong>Date</strong></TableCell>
                     <TableCell><strong>Amount</strong></TableCell>
                     <TableCell><strong>Purpose</strong></TableCell>
-                    <TableCell><strong>Department</strong></TableCell>
+                    <TableCell><strong>From</strong></TableCell> {/* NEW */}
+                    <TableCell><strong>To</strong></TableCell>   {/* NEW */}
                     <TableCell><strong>Status</strong></TableCell>
                     <TableCell><strong>Hash</strong></TableCell>
                   </TableRow>
                 </TableHead>
-                <TableBody>
-                  {transactions.slice(0, 10).map((transaction) => (
-                    <TableRow key={transaction.transaction_id} hover>
-                      <TableCell>{formatDate(transaction.created_at)}</TableCell>
-                      <TableCell>
-                        <Typography 
-                          variant="body2" 
-                          color={transaction.amount >= 0 ? 'success.main' : 'error.main'}
-                          fontWeight="bold"
-                        >
-                          {formatCurrency(transaction.amount)}
-                        </Typography>
-                      </TableCell>
-                      <TableCell style={{ maxWidth: 300 }}>
-                        {transaction.purpose}
-                      </TableCell>
-                      <TableCell>{transaction.department}</TableCell>
-                      <TableCell>
-                        <Chip 
-                          label={transaction.status} 
-                          color={getStatusColor(transaction.status)}
-                          size="small"
-                        />
-                      </TableCell>
-                      <TableCell>
-                        <Typography 
-                          variant="body2" 
-                          fontFamily="monospace"
-                          style={{ maxWidth: 120, overflow: 'hidden', textOverflow: 'ellipsis' }}
-                        >
-                          {transaction.transaction_hash?.substring(0, 16)}...
-                        </Typography>
-                      </TableCell>
-                    </TableRow>
-                  ))}
-                </TableBody>
+                  <TableBody>
+                    {transactions.slice(0, 10).map((transaction) => (
+                      <TableRow key={transaction.transaction_id} hover>
+                        <TableCell>{formatDate(transaction.created_at)}</TableCell>
+                        <TableCell>
+                          <Typography 
+                            variant="body2" 
+                            color={transaction.amount >= 0 ? 'success.main' : 'error.main'}
+                            fontWeight="bold"
+                          >
+                            {formatCurrency(transaction.amount)}
+                          </Typography>
+                        </TableCell>
+                        <TableCell style={{ maxWidth: 300 }}>
+                          {transaction.purpose}
+                        </TableCell>
+                        <TableCell>{transaction.fromDept || "Unknown"}</TableCell> {/* NEW */}
+                        <TableCell>{transaction.toDept || "Unknown"}</TableCell>   {/* NEW */}
+                        <TableCell>
+                          <Chip 
+                            label={transaction.status} 
+                            color={getStatusColor(transaction.status)}
+                            size="small"
+                          />
+                        </TableCell>
+                        <TableCell>
+                          <Typography 
+                            variant="body2" 
+                            fontFamily="monospace"
+                            style={{ maxWidth: 120, overflow: 'hidden', textOverflow: 'ellipsis' }}
+                            title={transaction.transaction_hash}
+                          >
+                            {transaction.transaction_hash?.substring(0, 16)}...
+                          </Typography>
+                        </TableCell>
+                      </TableRow>
+                    ))}
+                  </TableBody>
               </Table>
             </TableContainer>
           ) : (

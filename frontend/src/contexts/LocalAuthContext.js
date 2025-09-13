@@ -142,6 +142,13 @@ export const AuthProvider = ({ children }) => {
     }
   };
 
+  const addDepartment = async (name, password, confirmPassword) => {
+    return await makeAuthenticatedRequest(
+      '/api/departments',
+      'POST',
+      { name, password, confirm_password: confirmPassword }
+    );
+  };
   const value = {
     currentUser,
     token,
@@ -149,7 +156,8 @@ export const AuthProvider = ({ children }) => {
     signup,
     signin,
     logout,
-    makeAuthenticatedRequest
+    makeAuthenticatedRequest,
+    addDepartment
   };
 
   return (

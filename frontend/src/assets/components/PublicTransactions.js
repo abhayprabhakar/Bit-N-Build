@@ -216,51 +216,53 @@ const PublicTransactions = () => {
                     <TableCell><strong>Date</strong></TableCell>
                     <TableCell><strong>Amount</strong></TableCell>
                     <TableCell><strong>Purpose</strong></TableCell>
-                    <TableCell><strong>Department</strong></TableCell>
+                    <TableCell><strong>From</strong></TableCell> {/* NEW */}
+                    <TableCell><strong>To</strong></TableCell>   {/* NEW */}
                     <TableCell><strong>Status</strong></TableCell>
                     <TableCell><strong>Hash</strong></TableCell>
                   </TableRow>
                 </TableHead>
-                <TableBody>
-                  {transactions.map((transaction) => (
-                    <TableRow key={transaction.transaction_id} hover>
-                      <TableCell>
-                        {formatDate(transaction.created_at)}
-                      </TableCell>
-                      <TableCell>
-                        <Typography 
-                          variant="body2" 
-                          color={transaction.amount >= 0 ? 'success.main' : 'error.main'}
-                          fontWeight="bold"
-                        >
-                          {formatCurrency(transaction.amount)}
-                        </Typography>
-                      </TableCell>
-                      <TableCell>
-                        <Typography variant="body2" style={{ maxWidth: 300 }}>
-                          {transaction.purpose}
-                        </Typography>
-                      </TableCell>
-                      <TableCell>{transaction.department}</TableCell>
-                      <TableCell>
-                        <Chip 
-                          label={transaction.status} 
-                          color={getStatusColor(transaction.status)}
-                          size="small"
-                        />
-                      </TableCell>
-                      <TableCell>
-                        <Typography 
-                          variant="body2" 
-                          fontFamily="monospace"
-                          style={{ maxWidth: 120, overflow: 'hidden', textOverflow: 'ellipsis' }}
-                        >
-                          {transaction.transaction_hash?.substring(0, 16)}...
-                        </Typography>
-                      </TableCell>
-                    </TableRow>
-                  ))}
-                </TableBody>
+                  <TableBody>
+                    {transactions.map((transaction) => (
+                      <TableRow key={transaction.transaction_id} hover>
+                        <TableCell>
+                          {formatDate(transaction.created_at)}
+                        </TableCell>
+                        <TableCell>
+                          <Typography 
+                            variant="body2" 
+                            color={transaction.amount >= 0 ? 'success.main' : 'error.main'}
+                            fontWeight="bold"
+                          >
+                            {formatCurrency(transaction.amount)}
+                          </Typography>
+                        </TableCell>
+                        <TableCell>
+                          <Typography variant="body2" style={{ maxWidth: 300 }}>
+                            {transaction.purpose}
+                          </Typography>
+                        </TableCell>
+                        <TableCell>{transaction.fromDept || "Unknown"}</TableCell> {/* NEW */}
+                        <TableCell>{transaction.toDept || "Unknown"}</TableCell>   {/* NEW */}
+                        <TableCell>
+                          <Chip 
+                            label={transaction.status} 
+                            color={getStatusColor(transaction.status)}
+                            size="small"
+                          />
+                        </TableCell>
+                        <TableCell>
+                          <Typography 
+                            variant="body2" 
+                            fontFamily="monospace"
+                            style={{ maxWidth: 120, overflow: 'hidden', textOverflow: 'ellipsis' }}
+                          >
+                            {transaction.transaction_hash?.substring(0, 16)}...
+                          </Typography>
+                        </TableCell>
+                      </TableRow>
+                    ))}
+                  </TableBody>
               </Table>
             </TableContainer>
           ) : (
