@@ -104,15 +104,30 @@ def get_public_transactions():
         for trans in transactions:
             # Get department info
             department = Department.query.get(trans.dept_id) if trans.dept_id else None
-            
+
+            # Get fromDept and toDept
+            # You already set fromDept and toDept when creating the transaction on the blockchain,
+            # so you should store them in your Transaction model.
+            # If not, you can reconstruct them here as below:
+            creator = User.query.get(trans.created_by_id)
+            if creator and creator.role == UserRole.Admin:
+                from_dept = "Admin"
+            elif creator and creator.role == UserRole.DeptHead:
+                headed_dept = Department.query.filter_by(head_user_id=creator.user_id).first()
+                from_dept = headed_dept.name if headed_dept else creator.name
+            else:
+                from_dept = creator.name if creator else "Unknown"
+            to_dept = department.name if department else "Unknown"
+
             result.append({
                 "transaction_id": str(trans.transaction_id),
                 "amount": float(trans.amount),
                 "purpose": trans.purpose,
-                "department": department.name if department else "Unknown",
+                "fromDept": from_dept,
+                "toDept": to_dept,
                 "status": trans.status.value,
                 "created_at": trans.created_at.isoformat(),
-                "transaction_hash": trans.blockchain_hash # <-- FIX: Prefer blockchain hash!
+                "transaction_hash": trans.blockchain_hash
             })
         
         return jsonify({
@@ -123,7 +138,7 @@ def get_public_transactions():
         
     except Exception as e:
         return jsonify({"success": False, "message": str(e)}), 500
-
+    
 # Protected User Profile Route
 @app.route('/api/profile', methods=['GET'])
 @jwt_required
@@ -294,7 +309,15 @@ def create_transaction():
             return jsonify({"success": False, "message": "Creator user not found"}), 400
 
         # Prepare blockchain transaction data
-        fromDept = "Admin"  # or creator.name or creator.email
+        if creator.role == UserRole.Admin:
+            fromDept = "Admin"
+        elif creator.role == UserRole.DeptHead:
+            # Find the department this user heads
+            headed_dept = Department.query.filter_by(head_user_id=creator.user_id).first()
+            fromDept = headed_dept.name if headed_dept else creator.name
+        else:
+            fromDept = creator.name  # fallback
+
         toDept = dept.name
         amount = float(data['amount'])
         purpose = data['purpose']
