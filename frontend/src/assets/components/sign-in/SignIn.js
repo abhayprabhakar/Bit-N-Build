@@ -1,4 +1,5 @@
 import * as React from 'react';
+import { useNavigate } from 'react-router-dom';
 import Box from '@mui/material/Box';
 import Button from '@mui/material/Button';
 import Checkbox from '@mui/material/Checkbox';
@@ -12,11 +13,13 @@ import TextField from '@mui/material/TextField';
 import Typography from '@mui/material/Typography';
 import Stack from '@mui/material/Stack';
 import MuiCard from '@mui/material/Card';
+import Alert from '@mui/material/Alert';
 import { styled } from '@mui/material/styles';
 import ForgotPassword from './components/ForgotPassword';
 import AppTheme from '../shared-theme/AppTheme';
 import ColorModeSelect from '../shared-theme/ColorModeSelect';
 import { GoogleIcon, FacebookIcon, SitemarkIcon } from './components/CustomIcons';
+import { useAuth } from '../../../contexts/LocalAuthContext';
 
 const Card = styled(MuiCard)(({ theme }) => ({
   display: 'flex',
@@ -66,6 +69,11 @@ export default function SignIn(props) {
   const [passwordError, setPasswordError] = React.useState(false);
   const [passwordErrorMessage, setPasswordErrorMessage] = React.useState('');
   const [open, setOpen] = React.useState(false);
+  const [loading, setLoading] = React.useState(false);
+  const [error, setError] = React.useState('');
+
+  const navigate = useNavigate();
+  const { signin } = useAuth();
 
   const handleClickOpen = () => {
     setOpen(true);
@@ -75,16 +83,33 @@ export default function SignIn(props) {
     setOpen(false);
   };
 
-  const handleSubmit = (event) => {
+  const handleSubmit = async (event) => {
+    event.preventDefault();
+    
     if (emailError || passwordError) {
-      event.preventDefault();
       return;
     }
+
     const data = new FormData(event.currentTarget);
-    console.log({
-      email: data.get('email'),
-      password: data.get('password'),
-    });
+    const email = data.get('email');
+    const password = data.get('password');
+
+    if (!validateInputs()) {
+      return;
+    }
+
+    setLoading(true);
+    setError('');
+
+    try {
+      await signin(email, password);
+      navigate('/admin/dashboard'); // Redirect to admin dashboard on successful login
+    } catch (error) {
+      console.error('Login failed:', error);
+      setError(error.message || 'Login failed. Please check your credentials.');
+    } finally {
+      setLoading(false);
+    }
   };
 
   const validateInputs = () => {
@@ -128,6 +153,13 @@ export default function SignIn(props) {
           >
             Sign in
           </Typography>
+          
+          {error && (
+            <Alert severity="error" sx={{ width: '100%' }}>
+              {error}
+            </Alert>
+          )}
+
           <Box
             component="form"
             onSubmit={handleSubmit}
@@ -182,9 +214,10 @@ export default function SignIn(props) {
               type="submit"
               fullWidth
               variant="contained"
-              onClick={validateInputs}
+              disabled={loading}
+              sx={{ mt: 1 }}
             >
-              Sign in
+              {loading ? 'Signing in...' : 'Sign in'}
             </Button>
             <Link
               component="button"

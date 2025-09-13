@@ -20,6 +20,7 @@
     "@mui/x-tree-view": "^8.11.2",
     "@react-spring/web": "^10.0.2",
     "dayjs": "^1.11.18",
+    "firebase": "^12.2.1",
     "react": "^19.1.1",
     "react-dom": "^19.1.1",
     "react-router-dom": "^7.9.1"
