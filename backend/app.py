@@ -7,6 +7,8 @@ import uuid
 from datetime import datetime, timedelta
 from functools import wraps
 import logging
+import re
+import requests
 
 app = Flask(__name__)
 app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///transparency_ledger.db'  # Using SQLite for simplicity
@@ -110,7 +112,7 @@ def get_public_transactions():
                 "department": department.name if department else "Unknown",
                 "status": trans.status.value,
                 "created_at": trans.created_at.isoformat(),
-                "transaction_hash": trans.current_hash
+                "transaction_hash": trans.blockchain_hash # <-- FIX: Prefer blockchain hash!
             })
         
         return jsonify({
@@ -156,35 +158,60 @@ def get_user_profile():
 def create_department():
     try:
         data = request.get_json()
-        
-        # Validate head user exists
-        head_user = User.query.get(data['head_user_id'])
-        if not head_user:
-            return jsonify({"success": False, "message": "Head user not found"}), 400
-        
-        # If parent_dept_id is provided, validate it exists
-        if data.get('parent_dept_id'):
-            parent_dept = Department.query.get(data['parent_dept_id'])
-            if not parent_dept:
-                return jsonify({"success": False, "message": "Parent department not found"}), 400
-        
+        current_user_info = get_current_user()
+        admin_user = User.query.get(current_user_info['user_id'])
+        if not admin_user or admin_user.role != UserRole.Admin:
+            return jsonify({"success": False, "message": "Only admin can create departments"}), 403
+
+        # Validate required fields
+        name = data.get('name')
+        password = data.get('password')
+        confirm_password = data.get('confirm_password')
+        if not name or not password or not confirm_password:
+            return jsonify({"success": False, "message": "All fields are required"}), 400
+        if password != confirm_password:
+            return jsonify({"success": False, "message": "Passwords do not match"}), 400
+        if len(password) < 6:
+            return jsonify({"success": False, "message": "Password must be at least 6 characters"}), 400
+
+        # Enforce department name is a valid email
+        email_regex = r'^[\w\.-]+@[\w\.-]+\.\w+$'
+        if not re.match(email_regex, name):
+            return jsonify({"success": False, "message": "Department name must be a valid email address"}), 400
+
+        dept_email = name.strip().lower()
+        if User.query.filter_by(email=dept_email).first():
+            return jsonify({"success": False, "message": "Department user already exists"}), 400
+
+        dept_head = User(
+            name=f"{dept_email.split('@')[0].replace('.', ' ').title()} Head",
+            email=dept_email,
+            password_hash=hash_password(password),
+            role=UserRole.DeptHead
+        )
+        db.session.add(dept_head)
+        db.session.commit()
+
         dept = Department(
-            name=data['name'],
-            description=data.get('description'),
+            name=dept_email.split('@')[0].replace('.', ' ').title(),
+            description=data.get('description', ''),
             parent_dept_id=data.get('parent_dept_id'),
-            head_user_id=data['head_user_id'],
+            head_user_id=dept_head.user_id,
             allocated_budget=data.get('allocated_budget', 0.00)
         )
         db.session.add(dept)
         db.session.commit()
-        
+
         return jsonify({
-            "success": True, 
+            "success": True,
             "dept_id": str(dept.dept_id),
-            "message": "Department created successfully"
+            "head_user_email": dept_head.email,
+            "message": "Department and user created successfully"
         }), 201
     except Exception as e:
+        db.session.rollback()
         return jsonify({"success": False, "message": str(e)}), 500
+    
 
 @app.route('/api/departments', methods=['GET'])
 @jwt_required
@@ -204,10 +231,11 @@ def get_departments():
                 "allocated_budget": float(dept.allocated_budget),
                 "created_at": dept.created_at.isoformat()
             })
-        return jsonify(result), 200
+        # FIX: Return as {departments: [...]}
+        return jsonify({"departments": result, "success": True}), 200
     except Exception as e:
         return jsonify({"success": False, "message": str(e)}), 500
-
+    
 @app.route('/api/departments/<dept_id>', methods=['GET'])
 def get_department(dept_id):
     try:
@@ -251,93 +279,83 @@ def create_transaction():
     try:
         data = request.get_json()
         current_user_info = get_current_user()
-        
-        # Use current user as creator
         created_by_id = current_user_info['user_id']
-        
-        # Validate department exists
+
         dept_id = data.get('dept_id')
         if not dept_id:
             return jsonify({"success": False, "message": "Department ID is required"}), 400
-            
+
         dept = Department.query.get(dept_id)
         if not dept:
             return jsonify({"success": False, "message": "Department not found"}), 400
-        
-        # Validate creator exists
+
         creator = User.query.get(created_by_id)
         if not creator:
             return jsonify({"success": False, "message": "Creator user not found"}), 400
-        
-        # Get previous transaction hash for chaining
+
+        # Prepare blockchain transaction data
+        fromDept = "Admin"  # or creator.name or creator.email
+        toDept = dept.name
+        amount = float(data['amount'])
+        purpose = data['purpose']
+
+        # Call blockchain API
+        blockchain_api_url = "http://localhost:3001/api/transactions"
+        payload = {
+            "fromDept": fromDept,
+            "toDept": toDept,
+            "amount": str(amount),
+            "purpose": purpose
+        }
+        bc_response = requests.post(blockchain_api_url, json=payload)
+        bc_data = bc_response.json()
+        if not bc_data.get("success"):
+            return jsonify({"success": False, "message": "Blockchain error: " + bc_data.get("error", "Unknown error")}), 500
+
+        transaction_hash = bc_data.get("transactionHash")
+
+        # Save to local DB (status is now always Settled/Completed)
         last_tx = Transaction.query.order_by(Transaction.created_at.desc()).first()
         previous_hash = last_tx.current_hash if last_tx else ""
-        
-        # Prepare transaction data for hashing
+
         tx_data = {
             "dept_id": str(dept_id),
-            "amount": str(data['amount']),
-            "purpose": data['purpose'],
-            "status": data.get('status', 'Pending'),
+            "amount": str(amount),
+            "purpose": purpose,
+            "status": "Completed",
             "created_by_id": str(created_by_id),
-            "approved_by_id": data.get('approved_by_id', ''),
-            "invoice_url": data.get('invoice_url', ''),
+            "approved_by_id": "",
+            "invoice_url": "",
             "created_at": datetime.utcnow().isoformat()
         }
-        
         current_hash = compute_transaction_hash(tx_data, previous_hash)
-        
+
         transaction = Transaction(
             dept_id=dept_id,
-            amount=data['amount'],
-            purpose=data['purpose'],
-            status=TransactionStatus[data.get('status', 'Pending')],
+            amount=amount,
+            purpose=purpose,
+            status=TransactionStatus.Settled,
             created_by_id=created_by_id,
-            approved_by_id=data.get('approved_by_id'),
-            invoice_url=data.get('invoice_url'),
+            approved_by_id=None,
+            invoice_url=None,
             previous_hash=previous_hash,
-            current_hash=current_hash
+            current_hash=current_hash,
+            blockchain_hash=transaction_hash  # Add this field to your model if not present
         )
-        
+
         db.session.add(transaction)
         db.session.commit()
-        
+
         return jsonify({
-            "success": True, 
-            "transaction_id": transaction.transaction_id, 
+            "success": True,
+            "transaction_id": transaction.transaction_id,
             "current_hash": current_hash,
-            "message": "Transaction created successfully"
+            "blockchain_hash": transaction_hash,
+            "message": "Transaction created and added to blockchain"
         }), 201
     except Exception as e:
         return jsonify({"success": False, "message": str(e)}), 500
-
-@app.route('/api/transactions/<int:transaction_id>/approve', methods=['PUT'])
-@jwt_required
-def approve_transaction(transaction_id):
-    try:
-        data = request.get_json()
-        transaction = Transaction.query.get(transaction_id)
-        
-        if not transaction:
-            return jsonify({"success": False, "message": "Transaction not found"}), 404
-        
-        # Validate approver exists
-        approver = User.query.get(data['approved_by_id'])
-        if not approver:
-            return jsonify({"success": False, "message": "Approver user not found"}), 400
-        
-        transaction.approved_by_id = data['approved_by_id']
-        transaction.status = TransactionStatus.Approved
-        
-        db.session.commit()
-        
-        return jsonify({
-            "success": True,
-            "message": "Transaction approved successfully"
-        }), 200
-    except Exception as e:
-        return jsonify({"success": False, "message": str(e)}), 500
-
+    
 # Public Ledger Routes
 @app.route('/api/ledger', methods=['GET'])
 def get_public_ledger():
@@ -471,127 +489,6 @@ def get_users():
             })
         return jsonify(result), 200
     except Exception as e:
-        return jsonify({"success": False, "message": str(e)}), 500
-
-@app.route('/api/setup/sample-data', methods=['POST'])
-def create_sample_data():
-    """
-    Create sample transactions for testing (admin only)
-    """
-    try:
-        # Create sample departments if they don't exist
-        dept1 = Department.query.filter_by(name='Finance').first()
-        if not dept1:
-            dept1 = Department(
-                name='Finance',
-                description='Financial Operations Department'
-            )
-            db.session.add(dept1)
-        
-        dept2 = Department.query.filter_by(name='Operations').first()
-        if not dept2:
-            dept2 = Department(
-                name='Operations',
-                description='Operations Management Department'
-            )
-            db.session.add(dept2)
-        
-        db.session.commit()
-        
-        # Check if sample transactions already exist
-        existing_count = Transaction.query.count()
-        if existing_count > 0:
-            return jsonify({
-                "success": True,
-                "message": f"Sample data already exists ({existing_count} transactions)",
-                "transactions_created": 0
-            }), 200
-        
-        # Create sample transactions
-        sample_transactions = [
-            {
-                "amount": 10000.00,
-                "purpose": "Road maintenance and repair project for downtown area - From: City Budget, To: Public Works Department",
-                "dept_id": dept1.dept_id
-            },
-            {
-                "amount": 5500.00,
-                "purpose": "Educational materials and technology upgrade for local schools - From: State Grant, To: Education Department",
-                "dept_id": dept2.dept_id
-            },
-            {
-                "amount": 3200.00,
-                "purpose": "Playground equipment installation and park beautification - From: Community Fund, To: Parks and Recreation",
-                "dept_id": dept1.dept_id
-            },
-            {
-                "amount": 7800.00,
-                "purpose": "Medical equipment acquisition for community health center - From: Federal Grant, To: Healthcare Services",
-                "dept_id": dept2.dept_id
-            },
-            {
-                "amount": 2150.00,
-                "purpose": "Books and digital resources for public library expansion - From: Local Business, To: Library System",
-                "dept_id": dept1.dept_id
-            },
-            {
-                "amount": 12000.00,
-                "purpose": "Water treatment facility upgrade and maintenance - From: Infrastructure Fund, To: Water Management",
-                "dept_id": dept2.dept_id
-            }
-        ]
-        
-        # Get admin user for created_by_id
-        admin_user = User.query.filter_by(email='admin@transparency.com').first()
-        if not admin_user:
-            return jsonify({"success": False, "message": "Admin user not found"}), 400
-        
-        created_count = 0
-        previous_hash = ""
-        
-        for trans_data in sample_transactions:
-            # Create transaction creation time
-            created_at = datetime.utcnow() - timedelta(days=created_count * 2)
-            
-            # Create transaction hash with proper parameters
-            tx_data = {
-                'dept_id': str(trans_data["dept_id"]),
-                'amount': float(trans_data["amount"]),
-                'purpose': trans_data["purpose"],
-                'status': 'Approved',
-                'created_by_id': str(admin_user.user_id),
-                'created_at': created_at.isoformat()
-            }
-            
-            transaction_hash = compute_transaction_hash(tx_data, previous_hash)
-            
-            transaction = Transaction(
-                dept_id=trans_data["dept_id"],
-                amount=trans_data["amount"],
-                purpose=trans_data["purpose"],
-                status=TransactionStatus.Approved,
-                created_by_id=admin_user.user_id,
-                approved_by_id=admin_user.user_id,
-                created_at=created_at,
-                previous_hash=previous_hash,
-                current_hash=transaction_hash
-            )
-            
-            db.session.add(transaction)
-            previous_hash = transaction_hash
-            created_count += 1
-        
-        db.session.commit()
-        
-        return jsonify({
-            "success": True,
-            "message": f"Sample data created successfully",
-            "transactions_created": created_count,
-            "departments_created": 2
-        }), 201
-        
-    except Exception as e:
-        db.session.rollback()
         return jsonify({"success": False, "message": str(e)}), 500
 
 if __name__ == '__main__':
