@@ -12,7 +12,26 @@ Bit-N-Build/
 ## Quick Setup
 
 ### One-time Setup
-1. Copy `.env.example` to `.env` in root directory
+1. Copy this`.env` in root directory (root directory means the bit-n-build directory)
+```bash
+# Blockchain Configuration
+BLOCKCHAIN_HOST=localhost
+BLOCKCHAIN_PORT=8545
+NETWORK_ID=31337
+
+# API Configuration
+API_PORT=3001
+
+# Frontend Configuration  
+FRONTEND_PORT=3000
+
+# Contract Address (will be auto-updated by deploy script)
+CONTRACT_ADDRESS=0x5FbDB2315678afecb367f032d93F642f64180aa3
+
+# Python Backend Configuration (if needed)
+PYTHON_PORT=5000
+DATABASE_URL=sqlite:///app.db
+```
 2. Navigate to blockchain folder: `cd blockchain-backend`
 3. Install dependencies: `npm run setup`
 
