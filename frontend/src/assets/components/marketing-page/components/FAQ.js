@@ -52,7 +52,7 @@ export default function FAQ() {
             id="panel1d-header"
           >
             <Typography component="span" variant="subtitle2">
-              How do I contact customer support if I have a question or issue?
+              1. What is this platform?
             </Typography>
           </AccordionSummary>
           <AccordionDetails>
@@ -61,10 +61,7 @@ export default function FAQ() {
               gutterBottom
               sx={{ maxWidth: { sm: '100%', md: '70%' } }}
             >
-              You can reach our customer support team by emailing&nbsp;
-              <Link href="mailto:support@email.com">support@email.com</Link>
-              &nbsp;or calling our toll-free number. We&apos;re here to assist you
-              promptly.
+              This is a financial transparency platform designed to bring clarity and trust to how money flows within institutions. It allows organizations to track their budgets from high-level allocations down to specific expenses in a way that is verifiable and easy for everyone to understand.
             </Typography>
           </AccordionDetails>
         </Accordion>
@@ -78,7 +75,7 @@ export default function FAQ() {
             id="panel2d-header"
           >
             <Typography component="span" variant="subtitle2">
-              Can I return the product if it doesn&apos;t meet my expectations?
+              Why is a platform like this needed?
             </Typography>
           </AccordionSummary>
           <AccordionDetails>
@@ -87,9 +84,7 @@ export default function FAQ() {
               gutterBottom
               sx={{ maxWidth: { sm: '100%', md: '70%' } }}
             >
-              Absolutely! We offer a hassle-free return policy. If you&apos;re not
-              completely satisfied, you can return the product within [number of
-              days] days for a full refund or exchange.
+              Many institutions struggle with financial opacity. Money often moves through multiple layers, making it hard to track, creating delays, and opening chances for misuse. This lack of clarity can lead to public mistrust. Our platform was built to solve this by making financial data meaningful and trustworthy.
             </Typography>
           </AccordionDetails>
         </Accordion>
@@ -103,7 +98,7 @@ export default function FAQ() {
             id="panel3d-header"
           >
             <Typography component="span" variant="subtitle2">
-              What makes your product stand out from others in the market?
+              Who is this for?
             </Typography>
           </AccordionSummary>
           <AccordionDetails>
@@ -112,9 +107,7 @@ export default function FAQ() {
               gutterBottom
               sx={{ maxWidth: { sm: '100%', md: '70%' } }}
             >
-              Our product distinguishes itself through its adaptability, durability,
-              and innovative features. We prioritize user satisfaction and
-              continually strive to exceed expectations in every aspect.
+              This platform is for any institution that manages funds, such as colleges, government bodies, or NGOs. It also serves public stakeholders like citizens, students, parents, and donors who have a right to know how money is being spent.
             </Typography>
           </AccordionDetails>
         </Accordion>
@@ -128,7 +121,7 @@ export default function FAQ() {
             id="panel4d-header"
           >
             <Typography component="span" variant="subtitle2">
-              Is there a warranty on the product, and what does it cover?
+              How can I be sure the financial data is authentic?
             </Typography>
           </AccordionSummary>
           <AccordionDetails>
@@ -137,10 +130,7 @@ export default function FAQ() {
               gutterBottom
               sx={{ maxWidth: { sm: '100%', md: '70%' } }}
             >
-              Yes, our product comes with a [length of warranty] warranty. It covers
-              defects in materials and workmanship. If you encounter any issues
-              covered by the warranty, please contact our customer support for
-              assistance.
+              Every transaction recorded on our platform is cryptographically hashed and chained to the previous one. This creates an immutable ledger. Any attempt to alter a past record would break the chain, which is mathematically impossible to hide. This system ensures the data is authentic, traceable, and reliable.
             </Typography>
           </AccordionDetails>
         </Accordion>

@@ -384,7 +384,7 @@ const fetchDashboardData = async () => {
           <Button
             variant="outlined"
             startIcon={<Visibility />}
-            onClick={() => navigate('/')}
+            onClick={() => navigate('/public')}
             sx={{ textTransform: 'none', mr: 2 }}
           >
             Public View

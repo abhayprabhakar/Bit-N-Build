@@ -7,6 +7,7 @@ import Button from '@mui/material/Button';
 import IconButton from '@mui/material/IconButton';
 import Container from '@mui/material/Container';
 import Divider from '@mui/material/Divider';
+import { useNavigate } from 'react-router-dom';
 import MenuItem from '@mui/material/MenuItem';
 import Drawer from '@mui/material/Drawer';
 import MenuIcon from '@mui/icons-material/Menu';
@@ -32,6 +33,7 @@ const StyledToolbar = styled(Toolbar)(({ theme }) => ({
 
 export default function AppAppBar() {
   const [open, setOpen] = React.useState(false);
+  const navigate = useNavigate();
 
   const toggleDrawer = (newOpen: boolean) => () => {
     setOpen(newOpen);
@@ -80,11 +82,11 @@ export default function AppAppBar() {
               alignItems: 'center',
             }}
           >
-            <Button color="primary" variant="text" size="small">
-              Sign in
+            <Button color="primary" variant="text" size="small" onClick={() => navigate('/public')}>
+              Public View
             </Button>
-            <Button color="primary" variant="contained" size="small">
-              Sign up
+            <Button color="primary" variant="contained" size="small" onClick={() => navigate('/signin')}>
+              Login
             </Button>
             <ColorModeIconDropdown />
           </Box>
@@ -123,13 +125,13 @@ export default function AppAppBar() {
                 <MenuItem>Blog</MenuItem>
                 <Divider sx={{ my: 3 }} />
                 <MenuItem>
-                  <Button color="primary" variant="contained" fullWidth>
-                    Sign up
+                  <Button color="primary" variant="contained" fullWidth onClick={() => { setOpen(false); navigate('/public'); }}>
+                    Public View
                   </Button>
                 </MenuItem>
                 <MenuItem>
-                  <Button color="primary" variant="outlined" fullWidth>
-                    Sign in
+                  <Button color="primary" variant="outlined" fullWidth onClick={() => { setOpen(false); navigate('/signin'); }}>
+                    Login
                   </Button>
                 </MenuItem>
               </Box>
