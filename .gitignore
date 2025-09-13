@@ -1,0 +1,45 @@
+# Python
+venv/
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+.env
+.env.*
+
+# Node
+node_modules/
+dist/
+build/
+
+# Vite
+.vite/
+
+# Logs
+*.log
+
+# OS
+.DS_Store
+Thumbs.db
+
+# VS Code
+.vscode/
+
+# Misc
+*.swp
+*.swo
+
+# Coverage
+coverage/
+
+# Frontend static
+frontend/public/vite.svg
+frontend/src/assets/react.svg
+
+# Backend
+backend/*.db
+backend/.env
+
+# Others
+*.bak
+*.tmp
