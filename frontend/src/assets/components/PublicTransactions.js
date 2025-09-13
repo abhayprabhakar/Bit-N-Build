@@ -74,7 +74,12 @@ const PublicTransactions = () => {
   const [search, setSearch] = useState('');
   const { currency, setCurrency } = useContext(CurrencyContext);
   const navigate = useNavigate();
-
+  const [feedbackOpen, setFeedbackOpen] = useState(false);
+  const [feedbackTx, setFeedbackTx] = useState(null);
+  const [feedbacks, setFeedbacks] = useState([]);
+  const [feedbackInput, setFeedbackInput] = useState('');
+  const [feedbackLoading, setFeedbackLoading] = useState(false);
+  const [feedbackError, setFeedbackError] = useState('');
   useEffect(() => {
     fetchPublicTransactions();
   }, []);
@@ -193,6 +198,50 @@ const PublicTransactions = () => {
         </IconButton>
       </Tooltip>
     );
+  };
+
+  const openFeedback = async (tx) => {
+    setFeedbackTx(tx);
+    setFeedbackInput('');
+    setFeedbackError('');
+    setFeedbackOpen(true);
+    setFeedbackLoading(true);
+    try {
+      const res = await fetch(`http://localhost:5000/api/feedback/${tx.transaction_id}`);
+      const data = await res.json();
+      setFeedbacks(data || []);
+    } catch (e) {
+      setFeedbacks([]);
+    }
+    setFeedbackLoading(false);
+  };
+
+  const submitFeedback = async () => {
+    if (!feedbackInput.trim()) {
+      setFeedbackError('Please enter your feedback.');
+      return;
+    }
+    setFeedbackLoading(true);
+    try {
+      const res = await fetch(`http://localhost:5000/api/feedback/${feedbackTx.transaction_id}`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ comment: feedbackInput })
+      });
+      const data = await res.json();
+      if (data.success) {
+        setFeedbackInput('');
+        // Refresh feedbacks
+        const fres = await fetch(`http://localhost:5000/api/feedback/${feedbackTx.transaction_id}`);
+        setFeedbacks(await fres.json());
+        setFeedbackError('');
+      } else {
+        setFeedbackError(data.message || 'Failed to submit feedback.');
+      }
+    } catch (e) {
+      setFeedbackError('Failed to submit feedback.');
+    }
+    setFeedbackLoading(false);
   };
 
   // derive data for small visuals
@@ -601,6 +650,7 @@ const PublicTransactions = () => {
                     <TableCell sx={{ color: theme.palette.mode === 'dark' ? 'rgba(255,255,255,0.87)' : 'text.primary' }}><strong>To</strong></TableCell>
                     <TableCell sx={{ color: theme.palette.mode === 'dark' ? 'rgba(255,255,255,0.87)' : 'text.primary' }}><strong>Status</strong></TableCell>
                     <TableCell sx={{ color: theme.palette.mode === 'dark' ? 'rgba(255,255,255,0.87)' : 'text.primary' }}><strong>Hash</strong></TableCell>
+                    <TableCell sx={{ color: theme.palette.mode === 'dark' ? 'rgba(255,255,255,0.87)' : 'text.primary' }}><strong>Feedback</strong></TableCell>
                   </TableRow>
                 </TableHead>
                 <TableBody>
@@ -699,6 +749,15 @@ const PublicTransactions = () => {
                           </Tooltip>
                         </Box>
                       </TableCell>
+                      <TableCell>
+                        <Button
+                          size="small"
+                          variant="outlined"
+                          onClick={e => { e.stopPropagation(); openFeedback(transaction); }}
+                        >
+                          Feedback
+                        </Button>
+                      </TableCell>
                     </TableRow>
                   ))}
                 </TableBody>
@@ -777,6 +836,64 @@ const PublicTransactions = () => {
         </DialogContent>
         <DialogActions sx={{ bgcolor: 'transparent', borderTop: 'none' }}>
           <Button onClick={() => setDialogOpen(false)} sx={{ color: theme.palette.mode === 'dark' ? 'rgba(255,255,255,0.9)' : 'text.primary' }}>Close</Button>
+        </DialogActions>
+      </Dialog>
+      <Dialog open={feedbackOpen} onClose={() => setFeedbackOpen(false)} maxWidth="sm" fullWidth>
+        <DialogTitle>
+          Community Feedback
+          <IconButton
+            aria-label="close"
+            onClick={() => setFeedbackOpen(false)}
+            sx={{ position: 'absolute', right: 8, top: 8 }}
+          >
+            <CloseIcon />
+          </IconButton>
+        </DialogTitle>
+        <DialogContent dividers>
+          <Typography variant="subtitle2" gutterBottom>
+            Transaction: {feedbackTx?.purpose}
+          </Typography>
+          <TextField
+            label="Leave your feedback"
+            fullWidth
+            multiline
+            minRows={2}
+            value={feedbackInput}
+            onChange={e => setFeedbackInput(e.target.value)}
+            disabled={feedbackLoading}
+            sx={{ mb: 2 }}
+          />
+          {feedbackError && <Alert severity="error" sx={{ mb: 2 }}>{feedbackError}</Alert>}
+          <Button
+            variant="contained"
+            onClick={submitFeedback}
+            disabled={feedbackLoading}
+            sx={{ mb: 2 }}
+          >
+            Submit
+          </Button>
+          <Divider sx={{ my: 2 }} />
+          <Typography variant="subtitle2" gutterBottom>
+            Previous Feedback
+          </Typography>
+          {feedbackLoading ? (
+            <CircularProgress size={24} />
+          ) : (
+            <List>
+              {feedbacks.length === 0 && <ListItem><ListItemText primary="No feedback yet." /></ListItem>}
+              {feedbacks.map(f => (
+                <ListItem key={f.feedback_id} alignItems="flex-start">
+                  <ListItemText
+                    primary={f.comment}
+                    secondary={new Date(f.created_at).toLocaleString()}
+                  />
+                </ListItem>
+              ))}
+            </List>
+          )}
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={() => setFeedbackOpen(false)}>Close</Button>
         </DialogActions>
       </Dialog>
     </Box>
