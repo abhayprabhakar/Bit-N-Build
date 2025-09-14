@@ -964,26 +964,46 @@ function Chatbot() {
         onClose={() => setOpen(false)}
         maxWidth="xs"
         fullWidth
-        PaperProps={{ sx: { borderRadius: 3, overflow: 'hidden' } }}
+        PaperProps={{ sx: {
+          borderRadius: 3,
+          overflow: 'hidden',
+          // Match the page background exactly
+          background: theme.palette.mode === 'dark'
+            ? 'radial-gradient(80% 60% at 20% 0%, rgba(99,102,241,0.25) 0%, rgba(99,102,241,0.0) 60%), radial-gradient(90% 70% at 100% 0%, rgba(34,211,238,0.22) 0%, rgba(34,211,238,0.0) 55%), linear-gradient(180deg, #0a0f1a 0%, #0b1220 45%, #0d1117 100%)'
+            : 'radial-gradient(60% 30% at 8% 0%, rgba(67,56,202,0.12) 0%, rgba(6,182,212,0.04) 55%), linear-gradient(180deg,#f7fbff 0%, #ffffff 55%, #f6fbff 100%)',
+          boxShadow: theme.palette.mode === 'dark' ? '0 18px 60px rgba(2,6,23,0.6)' : '0 22px 66px rgba(16,24,40,0.12)',
+          color: theme.palette.mode === 'dark' ? 'rgba(255,255,255,0.95)' : '#0f172a'
+        } }}
       >
-        <Box sx={{ bgcolor: themeBg ? 'linear-gradient(90deg,#081022,#0b1220)' : 'linear-gradient(90deg,#f7fbff,#ffffff)', px: 2, py: 1.25, display: 'flex', alignItems: 'center' }}>
+        <Box sx={{
+          // Force a vivid header gradient to match site branding (explicit hex)
+          background: theme.palette.mode === 'dark'
+            ? 'linear-gradient(90deg, #0b1220 0%, #06202a 100%)'
+            : 'linear-gradient(90deg, #4f46e5 0%, #06b6d4 100%)',
+          px: 2,
+          py: 1.25,
+          display: 'flex',
+          alignItems: 'center'
+        }}>
           <Typography variant="subtitle1" sx={{ color: theme.palette.mode === 'dark' ? 'rgba(255,255,255,0.92)' : 'text.primary', flex: 1 }}>Transparency Chatbot</Typography>
           <IconButton onClick={() => setOpen(false)} sx={{ color: theme.palette.mode === 'dark' ? 'rgba(255,255,255,0.8)' : 'text.secondary' }}>
             <CloseIcon />
           </IconButton>
         </Box>
 
-        <DialogContent dividers sx={{ p: 1 }}>
+  <DialogContent sx={{ p: 1, background: 'transparent' }}>
           <Box ref={scrollRef} sx={{ maxHeight: 360, overflowY: 'auto', px: 1, py: 0.5 }}>
             {messages.map((msg, idx) => (
               <Box key={idx} sx={{ display: 'flex', justifyContent: msg.sender === 'user' ? 'flex-end' : 'flex-start', mb: 1 }}>
                 <Box sx={{
-                  bgcolor: msg.sender === 'user' ? (theme.palette.mode === 'dark' ? 'rgba(59,130,246,0.16)' : '#e3f2fd') : (theme.palette.mode === 'dark' ? 'rgba(255,255,255,0.04)' : '#f1f8e9'),
-                  color: theme.palette.mode === 'dark' ? 'rgba(255,255,255,0.92)' : 'text.primary',
+                  // Force explicit bubble colors so they remain vibrant regardless of theme palette
+                  bgcolor: msg.sender === 'user' ? (theme.palette.mode === 'dark' ? '#1e3a8a' : '#1e40af') : (theme.palette.mode === 'dark' ? '#047481' : '#06b6d4'),
+                  color: '#ffffff',
                   px: 2,
                   py: 1,
                   borderRadius: 2,
-                  maxWidth: '78%'
+                  maxWidth: '78%',
+                  boxShadow: theme.palette.mode === 'dark' ? '0 8px 24px rgba(2,6,23,0.6)' : '0 6px 18px rgba(16,24,40,0.06)'
                 }}>
                   <Typography sx={{ whiteSpace: 'pre-wrap' }}>{msg.text}</Typography>
                 </Box>
