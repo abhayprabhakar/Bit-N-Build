@@ -1,0 +1,84 @@
+version: '3.9'
+
+services:
+  # 1) Local Hardhat blockchain node
+  blockchain-node:
+    image: node:20
+    working_dir: /workspace/blockchain-backend
+    command: sh -c "npm install --legacy-peer-deps && npx hardhat node --hostname 0.0.0.0"
+    ports:
+      - "8545:8545"
+    volumes:
+      - .:/workspace
+    env_file:
+      - .env
+
+  # 2) One-shot deployment (updates ../.env with CONTRACT_ADDRESS)
+  blockchain-deploy:
+    image: node:20
+    working_dir: /workspace/blockchain-backend
+    command: sh -c "npm install --legacy-peer-deps && npx hardhat run scripts/deploy.js --network localhost"
+    depends_on:
+      - blockchain-node
+    volumes:
+      - .:/workspace
+    env_file:
+      - .env
+    environment:
+      - BLOCKCHAIN_HOST=blockchain-node
+      - BLOCKCHAIN_PORT=8545
+    restart: "no"
+
+  # 3) Blockchain API (Express)
+  blockchain-api:
+    image: node:20
+    working_dir: /workspace/blockchain-backend
+    command: sh -c "npm install --legacy-peer-deps && node api/server.js"
+    depends_on:
+      - blockchain-node
+      - blockchain-deploy
+    ports:
+      - "3001:3001"
+    volumes:
+      - .:/workspace
+    env_file:
+      - .env
+    environment:
+      - BLOCKCHAIN_HOST=blockchain-node
+      - BLOCKCHAIN_PORT=8545
+
+  # 4) Python Backend (Flask)
+  backend:
+    image: python:3.11-slim
+    working_dir: /workspace/backend
+    command: sh -c "pip install --no-cache-dir -r requirements.txt && python init_db.py && python app.py"
+    depends_on:
+      - blockchain-api
+    ports:
+      - "5000:5000"
+    volumes:
+      - .:/workspace
+    environment:
+      - PYTHONUNBUFFERED=1
+      - BLOCKCHAIN_API_URL=http://blockchain-api:3001
+    env_file:
+      - .env
+
+  # 5) React Frontend (Vite dev server)
+  frontend:
+    image: node:20
+    working_dir: /workspace/frontend
+    command: sh -c "npm install && npm run dev -- --host 0.0.0.0 --port 5173"
+    depends_on:
+      - backend
+      - blockchain-api
+    ports:
+      - "3000:5173"  # Access the app at http://localhost:3000
+    volumes:
+      - .:/workspace
+    env_file:
+      - .env
+
+networks:
+  default:
+    name: bitnbuild-net

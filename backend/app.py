@@ -418,7 +418,8 @@ def approve_transaction(transaction_id):
             "amount": str(tx.amount),
             "purpose": tx.purpose
         }
-        blockchain_api_url = "http://localhost:3001/api/transactions"
+        blockchain_base = os.getenv("BLOCKCHAIN_API_URL", "http://localhost:3001")
+        blockchain_api_url = f"{blockchain_base}/api/transactions"
         bc_response = requests.post(blockchain_api_url, json=payload)
         bc_data = bc_response.json()
         if not bc_data.get("success"):
@@ -811,4 +812,5 @@ def add_feedback(transaction_id):
     return jsonify({"success": True, "message": "Feedback added"}), 201
 
 if __name__ == '__main__':
-    app.run(debug=True)
+    # Bind to 0.0.0.0 for Docker container networking
+    app.run(host='0.0.0.0', port=int(os.environ.get('PYTHON_PORT', 5000)), debug=True)
