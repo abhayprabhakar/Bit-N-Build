@@ -61,6 +61,7 @@ import InputLabel from '@mui/material/InputLabel';
 import FormControl from '@mui/material/FormControl';
 import Stack from '@mui/material/Stack';
 
+
 const PublicTransactions = () => {
   const theme = useTheme();
   const { toggleColorMode } = useContext(ColorModeContext);
@@ -352,11 +353,19 @@ const PublicTransactions = () => {
         color="transparent"
         elevation={0}
         sx={{
-          backdropFilter: 'blur(8px)',
-          WebkitBackdropFilter: 'blur(8px)',
-          backgroundColor: theme.palette.mode === 'dark' ? 'rgba(255,255,255,0.06)' : 'linear-gradient(90deg, rgba(99,102,241,0.06), rgba(34,211,238,0.03))',
-          borderBottom: '1px solid',
+          boxShadow: 0,
+          bgcolor: 'transparent',
+          backgroundImage: 'none',
+          border: '1px solid',
           borderColor: theme.palette.mode === 'dark' ? 'rgba(255,255,255,0.10)' : 'rgba(0,0,0,0.06)',
+          backgroundColor: theme.palette.mode === 'dark'
+            ? 'rgba(10,15,26,0.85)'
+            : 'rgba(255,255,255,0.85)',
+          borderRadius: '0 0 18px 18px',
+          backdropFilter: 'blur(24px)',
+          WebkitBackdropFilter: 'blur(24px)',
+          mt: 0,
+          zIndex: 1201,
           transition: 'background-color 420ms ease, border-color 420ms ease, box-shadow 420ms ease'
         }}
       >
