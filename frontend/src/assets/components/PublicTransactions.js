@@ -910,31 +910,43 @@ const PublicTransactions = () => {
 };
 
 function Chatbot() {
+  const theme = useTheme();
   const [open, setOpen] = React.useState(false);
   const [messages, setMessages] = React.useState([
-    { sender: "bot", text: "Hi! Ask me anything about budget allocation or transactions." }
+    { sender: 'bot', text: 'Hi! Ask me anything about budget allocation or transactions.' }
   ]);
-  const [input, setInput] = React.useState("");
+  const [input, setInput] = React.useState('');
   const [loading, setLoading] = React.useState(false);
+  const scrollRef = React.useRef(null);
+
+  React.useEffect(() => {
+    if (open && scrollRef.current) {
+      // scroll to bottom
+      scrollRef.current.scrollTop = scrollRef.current.scrollHeight;
+    }
+  }, [messages, open]);
 
   const handleSend = async () => {
     if (!input.trim()) return;
-    setMessages(msgs => [...msgs, { sender: "user", text: input }]);
+    const userText = input.trim();
+    setMessages(msgs => [...msgs, { sender: 'user', text: userText }]);
+    setInput('');
     setLoading(true);
     try {
-      const res = await fetch("http://localhost:5000/api/chatbot", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ question: input })
+      const res = await fetch('http://localhost:5000/api/chatbot', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ question: userText })
       });
       const data = await res.json();
-      setMessages(msgs => [...msgs, { sender: "bot", text: data.answer || "Sorry, I couldn't find an answer." }]);
+      setMessages(msgs => [...msgs, { sender: 'bot', text: data.answer || "Sorry, I couldn't find an answer." }]);
     } catch (e) {
-      setMessages(msgs => [...msgs, { sender: "bot", text: "Error connecting to chatbot." }]);
+      setMessages(msgs => [...msgs, { sender: 'bot', text: 'Error connecting to chatbot.' }]);
     }
-    setInput("");
     setLoading(false);
   };
+
+  const themeBg = theme.palette.mode === 'dark';
 
   return (
     <>
@@ -942,63 +954,63 @@ function Chatbot() {
         color="primary"
         aria-label="chat"
         onClick={() => setOpen(true)}
-        sx={{ position: "fixed", bottom: 32, right: 32, zIndex: 2000 }}
+        sx={{ position: 'fixed', bottom: 32, right: 32, zIndex: 2000 }}
       >
         <ChatIcon />
       </Fab>
-      <Dialog open={open} onClose={() => setOpen(false)} maxWidth="xs" fullWidth>
-        <DialogTitle>
-          Transparency Chatbot
-          <IconButton
-            aria-label="close"
-            onClick={() => setOpen(false)}
-            sx={{ position: 'absolute', right: 8, top: 8 }}
-          >
+
+      <Dialog
+        open={open}
+        onClose={() => setOpen(false)}
+        maxWidth="xs"
+        fullWidth
+        PaperProps={{ sx: { borderRadius: 3, overflow: 'hidden' } }}
+      >
+        <Box sx={{ bgcolor: themeBg ? 'linear-gradient(90deg,#081022,#0b1220)' : 'linear-gradient(90deg,#f7fbff,#ffffff)', px: 2, py: 1.25, display: 'flex', alignItems: 'center' }}>
+          <Typography variant="subtitle1" sx={{ color: theme.palette.mode === 'dark' ? 'rgba(255,255,255,0.92)' : 'text.primary', flex: 1 }}>Transparency Chatbot</Typography>
+          <IconButton onClick={() => setOpen(false)} sx={{ color: theme.palette.mode === 'dark' ? 'rgba(255,255,255,0.8)' : 'text.secondary' }}>
             <CloseIcon />
           </IconButton>
-        </DialogTitle>
-        <DialogContent dividers sx={{ minHeight: 250, maxHeight: 350, overflowY: "auto" }}>
-          <List>
+        </Box>
+
+        <DialogContent dividers sx={{ p: 1 }}>
+          <Box ref={scrollRef} sx={{ maxHeight: 360, overflowY: 'auto', px: 1, py: 0.5 }}>
             {messages.map((msg, idx) => (
-              <ListItem key={idx} sx={{ justifyContent: msg.sender === "user" ? "flex-end" : "flex-start" }}>
-              <ListItemText
-                primary={
-                  <span style={{ whiteSpace: "pre-line" }}>
-                    {msg.text}
-                  </span>
-                }
-                sx={{
-                  bgcolor: msg.sender === "user" ? "#e3f2fd" : "#f1f8e9",
-                  borderRadius: 2,
+              <Box key={idx} sx={{ display: 'flex', justifyContent: msg.sender === 'user' ? 'flex-end' : 'flex-start', mb: 1 }}>
+                <Box sx={{
+                  bgcolor: msg.sender === 'user' ? (theme.palette.mode === 'dark' ? 'rgba(59,130,246,0.16)' : '#e3f2fd') : (theme.palette.mode === 'dark' ? 'rgba(255,255,255,0.04)' : '#f1f8e9'),
+                  color: theme.palette.mode === 'dark' ? 'rgba(255,255,255,0.92)' : 'text.primary',
                   px: 2,
                   py: 1,
-                  maxWidth: "80%",
-                  fontFamily: "inherit"
-                }}
-              />
-              </ListItem>
+                  borderRadius: 2,
+                  maxWidth: '78%'
+                }}>
+                  <Typography sx={{ whiteSpace: 'pre-wrap' }}>{msg.text}</Typography>
+                </Box>
+              </Box>
             ))}
             {loading && (
-              <ListItem>
-                <ListItemText primary="Thinking..." sx={{ fontStyle: "italic" }} />
-              </ListItem>
+              <Box sx={{ display: 'flex', justifyContent: 'flex-start', mb: 1 }}>
+                <Box sx={{ bgcolor: 'transparent', color: theme.palette.text.secondary, px: 2, py: 1 }}>Thinking...</Box>
+              </Box>
             )}
-          </List>
+          </Box>
         </DialogContent>
-        <DialogActions>
+
+        <Box sx={{ display: 'flex', gap: 1, alignItems: 'center', p: 1, borderTop: '1px solid', borderColor: 'divider' }}>
           <TextField
-            autoFocus
-            fullWidth
             placeholder="Ask about budget or transactions..."
             value={input}
             onChange={e => setInput(e.target.value)}
-            onKeyDown={e => { if (e.key === "Enter") handleSend(); }}
+            onKeyDown={e => { if (e.key === 'Enter') handleSend(); }}
+            fullWidth
+            size="small"
             disabled={loading}
           />
-          <Button onClick={handleSend} disabled={loading || !input.trim()} variant="contained">
+          <Button variant="contained" onClick={handleSend} disabled={loading || !input.trim()}>
             Send
           </Button>
-        </DialogActions>
+        </Box>
       </Dialog>
     </>
   );
