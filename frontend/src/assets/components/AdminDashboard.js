@@ -58,6 +58,7 @@ import ClearAllIcon from '@mui/icons-material/ClearAll';
 import Divider from '@mui/material/Divider';
 
 const AdminDashboard = () => {
+  
   const theme = useTheme();
   const { toggleColorMode } = useContext(ColorModeContext);
   const { currency, setCurrency } = useContext(CurrencyContext);
@@ -94,6 +95,7 @@ const AdminDashboard = () => {
   useEffect(() => {
     fetchDashboardData();
   }, []);
+
 
 const fetchDashboardData = async () => {
   try {
@@ -409,11 +411,19 @@ const fetchDashboardData = async () => {
         color="transparent"
         elevation={0}
         sx={{
-          backdropFilter: 'blur(8px)',
-          WebkitBackdropFilter: 'blur(8px)',
-          backgroundColor: theme.palette.mode === 'dark' ? 'rgba(255,255,255,0.06)' : 'linear-gradient(90deg, rgba(99,102,241,0.06), rgba(34,211,238,0.03))',
-          borderBottom: '1px solid',
+          boxShadow: 0,
+          bgcolor: 'transparent',
+          backgroundImage: 'none',
+          border: '1px solid',
           borderColor: theme.palette.mode === 'dark' ? 'rgba(255,255,255,0.10)' : 'rgba(0,0,0,0.06)',
+          backgroundColor: theme.palette.mode === 'dark'
+            ? 'rgba(10,15,26,0.85)'
+            : 'rgba(255,255,255,0.85)',
+          borderRadius: '0 0 18px 18px',
+          backdropFilter: 'blur(24px)',
+          WebkitBackdropFilter: 'blur(24px)',
+          mt: 0,
+          zIndex: 1201,
           transition: 'background-color 420ms ease, border-color 420ms ease, box-shadow 420ms ease'
         }}
       >
@@ -474,11 +484,15 @@ const fetchDashboardData = async () => {
             <Button variant="contained" startIcon={<AddIcon />} onClick={() => setOpenDialog(true)}>
               Add Transaction
             </Button>
-            <Button variant="outlined" onClick={() => setAddDeptDialogOpen(true)}>Add Department</Button>
+          {currentUser?.role?.toLowerCase() === 'admin' && (
+            <Button variant="outlined" onClick={() => setAddDeptDialogOpen(true)}>
+              Add Department
+            </Button>
+          )}
           </Stack>
         </Box>
       {/* Add Department Dialog */}
-      <Dialog open={addDeptDialogOpen} onClose={() => setAddDeptDialogOpen(false)}>
+        <Dialog open={addDeptDialogOpen} onClose={() => setAddDeptDialogOpen(false)}>
         <DialogTitle>Add Department</DialogTitle>
         <DialogContent>
           <TextField
@@ -619,7 +633,8 @@ const fetchDashboardData = async () => {
             </Card>
           </Grid>
         </Grid>
-
+{currentUser?.role?.toLowerCase() === 'admin' && (
+  <>
         <Grid item xs={12} md={6}>
           <Card>
             <CardContent>
@@ -662,6 +677,8 @@ const fetchDashboardData = async () => {
             </CardContent>
           </Card>
         </Grid>
+        </>
+      )}
 
         {/* Search + Filters (match Public view) */}
         <Paper sx={{ p: 2, mb: 3, borderRadius: 2, background: theme.palette.mode === 'dark' ? 'rgba(255,255,255,0.02)' : 'linear-gradient(180deg, rgba(99,102,241,0.04), rgba(6,182,212,0.02))', transition: 'background-color 420ms ease, border-color 420ms ease, box-shadow 420ms ease' }}>
@@ -941,56 +958,47 @@ const fetchDashboardData = async () => {
         <Dialog open={openDialog} onClose={() => setOpenDialog(false)} maxWidth="sm" fullWidth>
           <DialogTitle>Add New Transaction</DialogTitle>
           <DialogContent>
-            <Box component="form" sx={{ mt: 2 }}>
-              <Grid container spacing={2}>
-                <Grid item xs={12}>
-                  <TextField
-                    fullWidth
-                    label="Amount"
-                    name="amount"
-                    type="number"
-                    value={newTransaction.amount}
-                    onChange={handleInputChange}
-                    required
-                    inputProps={{ step: "0.01" }}
-                  />
-                </Grid>
-                <Grid item xs={12}>
-                  <TextField
-                    fullWidth
-                    select
-                    label="Department"
-                    name="dept_id"
-                    value={newTransaction.dept_id}
-                    onChange={handleInputChange}
-                    required
-                    SelectProps={{
-                      native: true,
-                    }}
-                  >
-                    <option value="">Select Department</option>
-                    {departments.map((dept) => (
-                      <option key={dept.dept_id} value={dept.dept_id}>
-                        {dept.name}
-                      </option>
-                    ))}
-                  </TextField>
-                </Grid>
-                <Grid item xs={12}>
-                  <TextField
-                    fullWidth
-                    label="Purpose (include from/to information here)"
-                    name="purpose"
-                    value={newTransaction.purpose}
-                    onChange={handleInputChange}
-                    multiline
-                    rows={4}
-                    required
-                    placeholder="e.g., Road maintenance project - From: City Budget, To: Public Works Department"
-                  />
-                </Grid>
-              </Grid>
-            </Box>
+<Box component="form" sx={{ mt: 2, display: 'flex', flexDirection: 'column', gap: 2 }}>
+  <TextField
+    fullWidth
+    label="Amount"
+    name="amount"
+    type="number"
+    value={newTransaction.amount}
+    onChange={handleInputChange}
+    required
+    inputProps={{ step: "0.01" }}
+  />
+  <TextField
+    fullWidth
+    select
+    name="dept_id"
+    value={newTransaction.dept_id}
+    onChange={handleInputChange}
+    required
+    SelectProps={{
+      native: true,
+    }}
+  >
+    <option value="">Select Department</option>
+    {departments.map((dept) => (
+      <option key={dept.dept_id} value={dept.dept_id}>
+        {dept.name}
+      </option>
+    ))}
+  </TextField>
+  <TextField
+    fullWidth
+    label="Purpose (include from/to information here)"
+    name="purpose"
+    value={newTransaction.purpose}
+    onChange={handleInputChange}
+    multiline
+    rows={4}
+    required
+    placeholder="e.g., Road maintenance project - From: City Budget, To: Public Works Department"
+  />
+</Box>
           </DialogContent>
           <DialogActions>
             <Button onClick={() => setOpenDialog(false)}>Cancel</Button>
